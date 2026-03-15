@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Tank Refraction Analogy</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #1a1a1a; color: #ecf0f1; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        canvas { background: #78ab4e; border: 4px solid #3e2723; cursor: crosshair; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+        .ui-panel { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 20px; background: #2c3e50; width: 960px; border-radius: 0 0 15px 15px; border: 1px solid #34495e; }
+        .control-group { background: #34495e; padding: 12px; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
+        .label-row { display: flex; justify-content: space-between; font-weight: bold; font-size: 11px; color: #3498db; text-transform: uppercase; }
+        .val { color: #f1c40f; font-family: monospace; font-size: 14px; font-weight: bold; }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: #f1c40f; }
+        .toggles { display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+        .toggle-item { display: flex; align-items: center; gap: 8px; font-size: 12px; cursor: pointer; }
+        button { background: #c0392b; color: white; border: none; padding: 10px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 5px; }
+        button:hover { background: #e74c3c; }
+        .hint { font-size: 10px; color: #bdc3c7; margin: 0; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <h2 style="margin: 10px 0;">Tank Refraction Analogy</h2>
+    <canvas id="canvas" width="1000" height="500"></canvas>
+
+    <div class="ui-panel">
+        <div class="control-group">
+            <div class="label-row">Approach Angle <span id="vEntry" class="val">0°</span></div>
+            <input type="range" id="tankAngle" min="-80" max="80" value="-22">
+            <div class="label-row">Grass Speed <span id="vSG" class="val">6.0</span></div>
+            <input type="range" id="speedGrass" min="1" max="10" step="0.1" value="6.0">
+            <div class="label-row">Mud Speed <span id="vSM" class="val">4.0</span></div>
+            <input type="range" id="speedMud" min="1" max="10" step="0.1" value="4.0">
+        </div>
+
+        <div class="control-group">
+            <div class="label-row">Boundary 1 Angle <span id="vB1" class="val">0°</span></div>
+            <input type="range" id="angle1" min="-60" max="60" value="0">
+            <div class="label-row">Boundary 2 Angle <span id="vB2" class="val">0°</span></div>
+            <input type="range" id="angle2" min="-60" max="60" value="0">
+            <button id="clear">CLEAR TRACKS & DATA</button>
+        </div>
+
+        <div class="control-group toggles">
+            <label class="toggle-item"><input type="checkbox" id="showNormals"> Show Normals</label>
+            <label class="toggle-item"><input type="checkbox" id="showAngles"> Show Incident/Refracted Angles</label>
+            <label class="toggle-item"><input type="checkbox" id="showTreads" checked> Show Tank Treads</label>
+            <p class="hint" style="text-align:left; line-height:1.35; margin: 2px 0 0 0;">
+                When angles are on, you’ll see <b>θi</b> (measured just before a boundary) and <b>θr</b> (measured just after).
+                The extra number <b>pred</b> is the Snell-style prediction from the speed ratio; small differences vs the measured angles are expected because the turn is spread over several simulation steps (finite timestep and tread width), rather than an instantaneous “kink” at the boundary.
+                You’ll see one set at each boundary the tank crosses (entry and exit).
+            </p>
+            <p class="hint">Click field to spawn tank.</p>
+        </div>
+    </div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+// Offscreen canvas for tracks
+const tCanvas = document.createElement('canvas');
+tCanvas.width = 1000; tCanvas.height = 500;
+const tctx = tCanvas.getContext('2d');
+
+let tanks = [];
+let crossingEvents = [];
+
+const DEG = Math.PI / 180;
+
+function wrapAngle(a) {
+    while (a <= -Math.PI) a += Math.PI * 2;
+    while (a > Math.PI) a -= Math.PI * 2;
+    return a;
+}
+
+// Shortest signed rotation from a to b (i.e. b - a wrapped to [-pi, pi])
+function shortDiff(fromAngle, toAngle) {
+    return wrapAngle(toAngle - fromAngle);
+}
+
+function getBoundaryAngleRad(bNum) {
+    return parseFloat(document.getElementById('angle' + bNum).value) * DEG;
+}
+
+function getBoundaryCenterX(bNum) {
+    return (bNum === 1) ? 350 : 650;
+}
+
+function boundaryXAtY(y, bNum) {
+    const ang = getBoundaryAngleRad(bNum);
+    return getBoundaryCenterX(bNum) + (y - 250) * Math.tan(ang);
+}
+
+function zoneAt(x, y) {
+    const b1 = boundaryXAtY(y, 1);
+    const b2 = boundaryXAtY(y, 2);
+    if (x < b1) return 1;      // grass (left)
+    if (x < b2) return 2;      // mud (middle)
+    return 3;                  // grass (right)
+}
+
+function speedForZone(zone) {
+    const sG = parseFloat(document.getElementById('speedGrass').value);
+    const sM = parseFloat(document.getElementById('speedMud').value);
+    return (zone === 2) ? sM : sG;
+}
+
+function getSpeedAt(x, y) {
+    // Scale for animation smoothness; ratios unchanged.
+    return speedForZone(zoneAt(x, y)) * 0.4;
+}
+
+// Intersection of segment P0->P1 with boundary x = cx + (y-250)*tan(alpha)
+function segmentBoundaryIntersection(x0, y0, x1, y1, bNum) {
+    const alpha = getBoundaryAngleRad(bNum);
+    const tanA = Math.tan(alpha);
+    const cx = getBoundaryCenterX(bNum);
+
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const denom = dx - dy * tanA;
+
+    if (Math.abs(denom) < 1e-9) return null; // nearly parallel
+
+    const t = (cx + (y0 - 250) * tanA - x0) / denom;
+    if (t < 0 || t > 1) return null;
+
+    return { x: x0 + t * dx, y: y0 + t * dy, t };
+}
+
+// Slider "boundary angle" alpha is measured from vertical; the boundary direction angle is (pi/2 - alpha).
+// A perpendicular (normal) therefore points at -alpha (or -alpha + pi). Choose the one that makes the INCIDENT
+// angle acute so our arcs are always the small ones.
+function pickBestNormal(alpha, incidentRayAngle) {
+    const n1 = -alpha;
+    const n2 = n1 + Math.PI;
+    const d1 = wrapAngle(incidentRayAngle - n1);
+    const d2 = wrapAngle(incidentRayAngle - n2);
+    return (Math.abs(d1) <= Math.abs(d2)) ? n1 : n2;
+}
+
+function snellPredicted(thetaIncidentAbs, vFrom, vTo) {
+    // sin(theta)/v = constant  => sin(theta_to) = (vTo/vFrom)*sin(theta_inc)
+    const arg = (vTo / vFrom) * Math.sin(thetaIncidentAbs);
+    if (arg > 1) return null; // (would correspond to TIR in wave optics)
+    return Math.asin(arg);
+}
+
+class Tank {
+    constructor(x, y, angleDeg) {
+        this.x = x;
+        this.y = y;
+        this.angle = angleDeg * DEG;
+        this.width = 32;
+
+        // Track drawing
+        this.distSinceTrack = 0;
+
+        // Angle sampling for "ray" interpretation
+        this.lastUniformAngle = this.angle;
+        this.lastUniformZone = zoneAt(x, y);
+
+        // Boundary 1 (grass -> mud) phase tracking
+        this.b1State = 'pre';
+        this.b1IncidentAngle = null;
+        this.b1RefractedAngle = null;
+        this.b1Event = null;
+
+        // Boundary 2 (mud -> grass) phase tracking
+        this.b2State = 'pre';
+        this.b2IncidentAngle = null;
+        this.b2RefractedAngle = null;
+        this.b2Event = null;
+
+        // Centre-region tracking for crossing detection
+        this.zoneC = zoneAt(x, y);
+    }
+
+    update() {
+        const x0 = this.x, y0 = this.y, a0 = this.angle;
+
+        // Tread contact points (before move)
+        const lx = x0 + Math.cos(a0 - Math.PI / 2) * (this.width / 2);
+        const ly = y0 + Math.sin(a0 - Math.PI / 2) * (this.width / 2);
+        const rx = x0 + Math.cos(a0 + Math.PI / 2) * (this.width / 2);
+        const ry = y0 + Math.sin(a0 + Math.PI / 2) * (this.width / 2);
+
+        const zL = zoneAt(lx, ly);
+        const zR = zoneAt(rx, ry);
+
+        const vL = getSpeedAt(lx, ly);
+        const vR = getSpeedAt(rx, ry);
+
+        // Integrate one step (simple Euler)
+        const omega = (vL - vR) / this.width;
+        const a1 = a0 + omega;
+        const speed = (vL + vR) / 2;
+
+        const x1 = x0 + Math.cos(a1) * speed;
+        const y1 = y0 + Math.sin(a1) * speed;
+
+        const travelAngle = Math.atan2(y1 - y0, x1 - x0);
+
+        // If both treads are in the same medium, the tank is (locally) travelling straight.
+        if (zL === zR) {
+            this.lastUniformAngle = travelAngle;
+            this.lastUniformZone = zL;
+        }
+
+        // --- Boundary phase logic (so we can label INCIDENT and REFRACTED angles, not the smeared transition) ---
+        // Boundary 1: between zones 1 and 2
+        if (this.b1State === 'pre' && ((zL === 1 && zR === 2) || (zL === 2 && zR === 1))) {
+            // Turning begins: lock the incident direction from the last straight-in-grass segment.
+            this.b1IncidentAngle = (this.lastUniformZone === 1) ? this.lastUniformAngle : travelAngle;
+            this.b1State = 'mixed';
+        }
+        if (this.b1State === 'mixed' && zL === 2 && zR === 2) {
+            // Turning ends: first straight-in-mud sample.
+            this.b1RefractedAngle = this.lastUniformAngle;
+            this.b1State = 'post';
+            if (this.b1Event && this.b1Event.refractedAngle == null) {
+                this.b1Event.refractedAngle = this.b1RefractedAngle;
+            }
+        }
+
+        // Boundary 2: between zones 2 and 3
+        if (this.b2State === 'pre' && ((zL === 2 && zR === 3) || (zL === 3 && zR === 2))) {
+            this.b2IncidentAngle = (this.lastUniformZone === 2) ? this.lastUniformAngle : travelAngle;
+            this.b2State = 'mixed';
+        }
+        if (this.b2State === 'mixed' && zL === 3 && zR === 3) {
+            this.b2RefractedAngle = this.lastUniformAngle;
+            this.b2State = 'post';
+            if (this.b2Event && this.b2Event.refractedAngle == null) {
+                this.b2Event.refractedAngle = this.b2RefractedAngle;
+            }
+        }
+
+        // --- Robust centre crossing detection + marker placement (intersection on the boundary line) ---
+        const zC0 = this.zoneC;
+        const zC1 = zoneAt(x1, y1);
+
+        // Crossing boundary 1: centre goes 1 -> 2
+        if (zC0 === 1 && zC1 === 2) {
+            const hit = segmentBoundaryIntersection(x0, y0, x1, y1, 1);
+            const hx = hit ? hit.x : boundaryXAtY(y0, 1);
+            const hy = hit ? hit.y : y0;
+            this.recordBoundaryEvent(1, hx, hy);
+        }
+
+        // Crossing boundary 2: centre goes 2 -> 3
+        if (zC0 === 2 && zC1 === 3) {
+            const hit = segmentBoundaryIntersection(x0, y0, x1, y1, 2);
+            const hx = hit ? hit.x : boundaryXAtY(y0, 2);
+            const hy = hit ? hit.y : y0;
+            this.recordBoundaryEvent(2, hx, hy);
+        }
+
+        this.zoneC = zC1;
+
+        // Commit pose
+        this.angle = a1;
+        this.x = x1;
+        this.y = y1;
+
+        // Tracks (use the "before" contact points)
+        this.distSinceTrack += speed;
+        if (this.distSinceTrack > 5 && document.getElementById('showTreads').checked) {
+            tctx.fillStyle = "rgba(40, 30, 10, 0.25)";
+            [[lx, ly], [rx, ry]].forEach(([px, py]) => {
+                tctx.save();
+                tctx.translate(px, py);
+                tctx.rotate(a0);
+                tctx.fillRect(-3, -2, 6, 4);
+                tctx.restore();
+            });
+            this.distSinceTrack = 0;
+        }
+    }
+
+    recordBoundaryEvent(bNum, x, y) {
+        const alpha = getBoundaryAngleRad(bNum);
+
+        // Determine incident/refracted angles for this boundary, using the phase samples.
+        let incidentAngle = null;
+        let refractedAngle = null;
+        let fromZone = null;
+        let toZone = null;
+
+        if (bNum === 1) {
+            fromZone = 1; toZone = 2;
+            incidentAngle = this.b1IncidentAngle ?? this.lastUniformAngle;
+            refractedAngle = this.b1RefractedAngle ?? null;
+        } else {
+            fromZone = 2; toZone = 3;
+            incidentAngle = this.b2IncidentAngle ?? this.lastUniformAngle;
+            refractedAngle = this.b2RefractedAngle ?? null;
+        }
+
+        const normalAngle = pickBestNormal(alpha, incidentAngle);
+
+// A consistent "forward" normal used only for LEFT/RIGHT placement:
+// boundaries always separate lower-zone (left) -> higher-zone (right), so "forward" is the right-pointing normal.
+let forwardNormalAngle = -alpha;
+if (Math.cos(forwardNormalAngle) < 0) forwardNormalAngle += Math.PI; // ensure it points to +x
+forwardNormalAngle = wrapAngle(forwardNormalAngle);
+
+
+        const evt = {
+            x, y,
+            bNum,
+            fromZone,
+            toZone,
+            normalAngle,
+            forwardNormalAngle,
+            incidentAngle,
+            refractedAngle
+        };
+
+        crossingEvents.push(evt);
+
+        if (bNum === 1) {
+            this.b1Event = evt;
+            // If we already have the refracted sample (possible if both treads got into mud before the centre), attach it.
+            if (this.b1RefractedAngle != null) evt.refractedAngle = this.b1RefractedAngle;
+        } else {
+            this.b2Event = evt;
+            if (this.b2RefractedAngle != null) evt.refractedAngle = this.b2RefractedAngle;
+        }
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.angle);
+        ctx.fillStyle = '#3e4a36';
+        ctx.fillRect(-18, -16, 36, 32);
+        ctx.fillStyle = '#111';
+        ctx.fillRect(-20, -16, 40, 6);
+        ctx.fillRect(-20, 10, 40, 6);
+        ctx.fillStyle = '#6b8e23';
+        ctx.beginPath();
+        ctx.arc(0, 0, 10, 0, 7);
+        ctx.fill();
+        ctx.strokeStyle = '#111';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(25, 0);
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+function drawWorld() {
+    const a1 = getBoundaryAngleRad(1);
+    const a2 = getBoundaryAngleRad(2);
+
+    ctx.fillStyle = '#78ab4e';
+    ctx.fillRect(0, 0, 1000, 500); // grass
+
+    // Mud polygon between the two boundary lines
+    ctx.fillStyle = '#5d4037';
+    ctx.beginPath();
+    ctx.moveTo(350 + (0 - 250) * Math.tan(a1), 0);
+    ctx.lineTo(650 + (0 - 250) * Math.tan(a2), 0);
+    ctx.lineTo(650 + (500 - 250) * Math.tan(a2), 500);
+    ctx.lineTo(350 + (500 - 250) * Math.tan(a1), 500);
+    ctx.closePath();
+    ctx.fill();
+}
+
+function drawArcAndLabel(x, y, normalAngle, rayAngle, radius, label, extraText, labelOffset) {
+    const diff = shortDiff(normalAngle, rayAngle); // signed
+    const end = normalAngle + diff;
+
+    // Arc (always the short way)
+    ctx.beginPath();
+    ctx.arc(x, y, radius, normalAngle, end, diff < 0);
+    ctx.stroke();
+
+    // Label position: along bisector + optional perpendicular offset to avoid overlaps
+    const thetaAbs = Math.abs(diff);
+    const mid = normalAngle + diff / 2;
+
+    const deg = (thetaAbs * 180 / Math.PI).toFixed(1);
+    const text = extraText ? `${label}${deg}° ${extraText}` : `${label}${deg}°`;
+
+    const ux = Math.cos(mid), uy = Math.sin(mid);
+    const px = -uy, py = ux; // perpendicular
+
+    const off = (labelOffset == null) ? 0 : labelOffset;
+
+    const tx = x + (radius + 10) * ux + off * px;
+    const ty = y + (radius + 10) * uy + off * py;
+
+    // Small background for readability
+    ctx.save();
+    ctx.font = "bold 12px monospace";
+    const w = ctx.measureText(text).width;
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fillRect(tx - 2, ty - 12, w + 4, 14);
+    ctx.restore();
+
+    ctx.fillText(text, tx, ty);
+}
+
+
+
+// Ensure the angle arc is drawn on the desired side of the boundary.
+// desiredSide: -1 for incident side (opposite the forward normal), +1 for refracted side (along the forward normal).
+// We keep the *magnitude* of the angle the same by optionally adding π to BOTH angles, which flips the arc to the other side.
+function adjustAnglesToSide(normalAngle, rayAngle, forwardNormalAngle, desiredSide) {
+    const diff = shortDiff(normalAngle, rayAngle);
+    const mid = wrapAngle(normalAngle + diff / 2);
+    const dot = Math.cos(mid - forwardNormalAngle); // + => points to transmitted side, - => incident side
+    const wantPos = desiredSide > 0;
+    if ((wantPos && dot < 0) || (!wantPos && dot > 0)) {
+        return { normal: wrapAngle(normalAngle + Math.PI), ray: wrapAngle(rayAngle + Math.PI) };
+    }
+    return { normal: normalAngle, ray: rayAngle };
+}
+function drawPhysicsMarkers() {
+    const showN = document.getElementById('showNormals').checked;
+    const showA = document.getElementById('showAngles').checked;
+
+    crossingEvents.forEach(e => {
+        if (showN) {
+            ctx.strokeStyle = "rgba(255,255,255,0.85)";
+            ctx.setLineDash([5, 5]);
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(e.x + 110 * Math.cos(e.normalAngle), e.y + 110 * Math.sin(e.normalAngle));
+            ctx.lineTo(e.x - 110 * Math.cos(e.normalAngle), e.y - 110 * Math.sin(e.normalAngle));
+            ctx.stroke();
+            ctx.setLineDash([]);
+        }
+
+        if (showA) {
+            // Visual aids
+            ctx.lineWidth = 1.5;
+            ctx.font = "bold 12px monospace";
+
+            // Incident stub (draw backwards from boundary into incident region)
+            ctx.strokeStyle = "rgba(255,255,255,0.65)";
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(e.x, e.y);
+            ctx.lineTo(e.x - 70 * Math.cos(e.incidentAngle), e.y - 70 * Math.sin(e.incidentAngle));
+            ctx.stroke();
+
+            // Refracted stub (forward into transmitted region) if we have it
+            if (e.refractedAngle != null) {
+                ctx.strokeStyle = "rgba(255, 230, 0, 0.75)";
+                ctx.beginPath();
+                ctx.moveTo(e.x, e.y);
+                ctx.lineTo(e.x + 70 * Math.cos(e.refractedAngle), e.y + 70 * Math.sin(e.refractedAngle));
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            // Angles
+
+            // Separate incident/refracted arcs by nudging their centres into the relevant media
+            const fnA = (e.forwardNormalAngle != null) ? e.forwardNormalAngle : e.normalAngle;
+            const fnx = Math.cos(fnA), fny = Math.sin(fnA);
+            const shift = 12;
+            const incCx = e.x - shift * fnx;
+            const incCy = e.y - shift * fny;
+            const refCx = e.x + shift * fnx;
+            const refCy = e.y + shift * fny;
+
+            // Incident angle (drawn on incident side)
+            ctx.strokeStyle = "rgba(255,255,255,0.95)";
+            ctx.fillStyle = "rgba(255,255,255,0.95)";
+            const incAdj = adjustAnglesToSide(e.normalAngle, e.incidentAngle, fnA, -1);
+            drawArcAndLabel(incCx, incCy, incAdj.normal, incAdj.ray, 44, "θi=", null, +14);
+
+            // Refracted angle (drawn on transmitted side) + Snell prediction
+            if (e.refractedAngle != null) {
+                const thetaI = Math.abs(shortDiff(e.normalAngle, e.incidentAngle));
+                const vFrom = speedForZone(e.fromZone);
+                const vTo = speedForZone(e.toZone);
+                const pred = snellPredicted(thetaI, vFrom, vTo);
+                const predTxt = (pred == null) ? "TIR" : (pred * 180 / Math.PI).toFixed(1) + "°";
+                ctx.strokeStyle = "rgba(255,255,0,0.95)";
+                ctx.fillStyle = "rgba(255,255,0,0.95)";
+                const refAdj = adjustAnglesToSide(e.normalAngle, e.refractedAngle, fnA, +1);
+                drawArcAndLabel(refCx, refCy, refAdj.normal, refAdj.ray, 30, "θr=", `pred=${predTxt}`, -14);
+            }
+        }
+    });
+}
+
+function updateLabels() {
+    const ids = ['tankAngle', 'angle1', 'angle2', 'speedGrass', 'speedMud'];
+    ids.forEach(id => {
+        let labelId = id === 'tankAngle' ? 'vEntry' :
+                      (id === 'speedGrass' ? 'vSG' :
+                      (id === 'speedMud' ? 'vSM' :
+                      (id === 'angle1' ? 'vB1' : 'vB2')));
+        const v = document.getElementById(id).value;
+        document.getElementById(labelId).innerText = v + (id.includes('Angle') || id.includes('angle') ? "°" : "");
+    });
+}
+
+function loop() {
+    drawWorld();
+    ctx.drawImage(tCanvas, 0, 0);
+    drawPhysicsMarkers();
+    updateLabels();
+
+    tanks.forEach((t, i) => {
+        t.update();
+        t.draw();
+        if (t.x > 1100 || t.x < -100 || t.y > 600 || t.y < -100) tanks.splice(i, 1);
+    });
+
+    requestAnimationFrame(loop);
+}
+
+canvas.addEventListener('mousedown', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    tanks.push(new Tank(
+        e.clientX - rect.left,
+        e.clientY - rect.top,
+        parseFloat(document.getElementById('tankAngle').value)
+    ));
+});
+
+document.getElementById('clear').onclick = () => {
+    tctx.clearRect(0, 0, 1000, 500);
+    tanks = [];
+    crossingEvents = [];
+};
+
+// Optional quality-of-life: if sliders are changed, clear old markers so you don't mix runs.
+['tankAngle','angle1','angle2','speedGrass','speedMud'].forEach(id => {
+    document.getElementById(id).addEventListener('input', () => {
+        // Leave tracks unless the user explicitly clears.
+        crossingEvents = [];
+    });
+});
+
+loop();
+</script>
+</body>
+</html>

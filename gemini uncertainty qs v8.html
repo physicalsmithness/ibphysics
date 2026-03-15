@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IB Physics Uncertainty Master v7</title>
+<style>
+    :root {
+        --primary: #003366;
+        --accent: #0074D9;
+        --bg: #f4f4f9;
+        --card: #ffffff;
+        --text: #2c3e50;
+        --success: #27ae60;
+        --error: #c0392b;
+        --warning: #f39c12;
+        --font-main: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        --font-math: 'Times New Roman', serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+        font-family: var(--font-main);
+        background-color: var(--bg);
+        color: var(--text);
+        margin: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* LAYOUT */
+    .app-wrapper {
+        display: flex;
+        flex: 1;
+        overflow: hidden;
+    }
+
+    /* SIDEBAR */
+    .sidebar {
+        width: 320px;
+        background: #fff;
+        border-right: 1px solid #e0e0e0;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        flex-shrink: 0;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.05);
+        z-index: 10;
+    }
+    
+    .sidebar h2 { margin: 0 0 15px 0; font-size: 1.1rem; color: var(--primary); border-bottom: 2px solid var(--accent); padding-bottom: 5px;}
+    
+    .overall-score {
+        background: var(--primary);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .big-score { font-size: 2.2rem; font-weight: bold; display: block; line-height: 1; margin-bottom: 5px; }
+    .score-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+
+    .stat-row {
+        margin-bottom: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        padding-bottom: 8px;
+    }
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+        color: #444;
+    }
+    .stat-history {
+        display: flex;
+        gap: 6px;
+    }
+    .dot {
+        width: 14px;
+        height: 14px;
+        border-radius: 4px;
+        background: #eee;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: white;
+    }
+    .dot.pass { background: var(--success); }
+    .dot.pass::after { content: '✓'; }
+    .dot.fail { background: var(--error); }
+    .dot.fail::after { content: '✗'; }
+    .dot.na { background: transparent; border: 1px solid #eee; }
+
+    /* MAIN AREA */
+    .main-area {
+        flex: 1;
+        padding: 30px;
+        overflow-y: auto;
+        display: flex;
+        justify-content: center;
+        background-color: #f8f9fa;
+    }
+
+    .container { width: 100%; max-width: 850px; }
+
+    header { margin-bottom: 25px; border-bottom: 1px solid #ddd; padding-bottom: 15px; }
+    h1 { margin: 0; color: var(--primary); font-size: 1.8rem; }
+    p.subtitle { margin-top: 8px; color: #666; font-size: 0.95rem; }
+
+    /* CARD */
+    .card {
+        background: var(--card);
+        padding: 35px;
+        border-radius: 16px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+        margin-bottom: 30px;
+        position: relative;
+        border: 1px solid #eff2f5;
+    }
+
+    .topic-tag {
+        position: absolute;
+        top: 25px;
+        right: 25px;
+        background: #e1f0fa;
+        color: var(--primary);
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .question-text {
+        font-size: 1.15rem;
+        line-height: 1.6;
+        margin-bottom: 25px;
+        color: #333;
+    }
+    .question-text b { color: var(--primary); }
+
+    /* EQUATION */
+    .equation-display {
+        background: #fff;
+        border: 2px solid #eef2f7;
+        border-left: 6px solid var(--accent);
+        padding: 20px;
+        margin: 25px 0;
+        font-family: var(--font-math);
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+    }
+    .fraction { display: inline-block; text-align: center; vertical-align: middle; margin: 0 6px; }
+    .numer { border-bottom: 1.5px solid #333; display: block; padding: 2px 5px; }
+    .denom { display: block; padding: 2px 5px; }
+    .power { font-size: 0.6em; vertical-align: super; margin-left: 2px; }
+    .sqrt { border-top: 1.5px solid #333; padding-top: 2px; display: inline-block; }
+    .radical { font-size: 1.2em; margin-right: 2px; }
+
+    /* INPUTS */
+    .input-group {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        flex-wrap: wrap;
+        margin: 30px 0;
+        background: #f1f3f5;
+        padding: 25px;
+        border-radius: 12px;
+    }
+    .input-label { font-weight: bold; color: #555; }
+    input {
+        padding: 12px 15px;
+        font-size: 1.2rem;
+        border: 2px solid #ccc;
+        border-radius: 8px;
+        width: 150px;
+        text-align: center;
+        font-family: var(--font-main);
+        transition: border-color 0.2s;
+    }
+    input:focus { border-color: var(--accent); outline: none; }
+
+    .btn {
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 14px 32px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: transform 0.1s, background 0.2s;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .btn:hover { background: #002244; transform: translateY(-1px); }
+    .btn-next { background: #6c757d; display: none; margin-left: 15px; }
+    .btn-next:hover { background: #5a6268; }
+
+    /* WORKING OUT */
+    .working-container {
+        margin-top: 30px;
+        display: none;
+    }
+
+    .feedback-banner {
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-weight: bold;
+        font-size: 1.1rem;
+        text-align: center;
+        border: 1px solid transparent;
+    }
+    .fb-success { background: #d4edda; color: #155724; border-color: #c3e6cb; }
+    .fb-fail { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+    .fb-partial { background: #fff3cd; color: #856404; border-color: #ffeeba; }
+
+    .working-card {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .wc-header {
+        background: #f8f9fa;
+        padding: 12px 20px;
+        border-bottom: 1px solid #e0e0e0;
+        font-weight: bold;
+        color: #555;
+    }
+    .wc-row {
+        padding: 15px 20px;
+        border-bottom: 1px solid #f0f0f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .wc-row:last-child { border-bottom: none; }
+    .wc-label { font-size: 0.95rem; color: #666; font-weight: 500; }
+    .wc-math { 
+        font-family: 'Courier New', monospace; 
+        font-weight: 600; 
+        color: #333; 
+        background: #eee;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    .wc-final { background: #e8f4fc; }
+
+    @media (max-width: 900px) {
+        .app-wrapper { flex-direction: column; overflow: auto; }
+        .sidebar { width: 100%; order: 2; border-right: none; border-top: 1px solid #ccc; max-height: none; box-shadow: none; }
+        .main-area { padding: 20px; }
+    }
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+    <div class="main-area">
+        <div class="container">
+            <header>
+                <h1>IB Physics Uncertainty Master</h1>
+                <p class="subtitle">Data Booklet Equations • Strictly Formatted Data • Multi-Rule Crediting</p>
+            </header>
+
+            <div class="card">
+                <span id="topic-badge" class="topic-tag">Topic</span>
+                
+                <div id="question-text" class="question-text">Loading...</div>
+                
+                <div id="equation-area" class="equation-display"></div>
+
+                <div class="input-group" id="input-container"></div>
+                
+                <div>
+                    <button class="btn" id="btn-check" onclick="checkAnswer()">Check Answer</button>
+                    <button class="btn btn-next" id="btn-next" onclick="nextQuestion()">Next Question</button>
+                </div>
+
+                <div id="working-container" class="working-container">
+                    <div id="feedback-banner" class="feedback-banner"></div>
+                    
+                    <div class="working-card">
+                        <div class="wc-header">Step-by-Step Solution</div>
+                        <div id="working-steps"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="sidebar">
+        <div class="overall-score">
+            <span class="big-score" id="total-score-display">0/0</span>
+            <span class="score-label">Total Points</span>
+        </div>
+
+        <h2>Skill Breakdown</h2>
+        <div id="stats-container"></div>
+    </div>
+</div>
+
+<script>
+/**
+ * CORE LOGIC
+ */
+const CATEGORIES = {
+    A: "Value Calculation",
+    B: "Add/Sub Propagation",
+    C: "Mult/Div Propagation",
+    D: "Power Propagation",
+    E: "Abs Uncertainty Calc",
+    F: "Unc. Sig Figs (Format)",
+    G: "Precision Match (d.p.)"
+};
+
+let state = {
+    stats: {},
+    totalScore: 0,
+    totalMax: 0,
+    currentQ: null
+};
+
+// Initialize Stats
+Object.keys(CATEGORIES).forEach(key => {
+    state.stats[key] = { correct: 0, total: 0, history: [] };
+});
+
+function randFloat(min, max, dp=1) {
+    return parseFloat((Math.random() * (max - min) + min).toFixed(dp));
+}
+
+// 1 or 2 sig figs rule based on first digit
+function getRequiredSF(num) {
+    if (num === 0) return 1;
+    const str = num.toExponential();
+    const firstDigit = parseInt(str.charAt(0));
+    return (firstDigit === 1) ? 2 : 1;
+}
+
+// Round number to specific Sig Figs
+function roundToSF(num, sf) {
+    if (num === 0) return 0;
+    return parseFloat(num.toPrecision(sf));
+}
+
+function getDP(str) {
+    if (str.indexOf('.') === -1) return 0;
+    return str.split('.')[1].length;
+}
+
+// Helper to determine Sig Figs of a string input
+function countStringSF(str) {
+    let s = str.replace('.', ''); // remove decimal
+    s = s.replace(/^0+/, ''); // remove leading zeros
+    return s.length;
+}
+
+function getLastDigitMag(str) {
+    if (str.includes('.')) return -1 * getDP(str);
+    let zeros = 0;
+    for(let i=str.length-1; i>=0; i--) {
+        if(str[i] === '0') zeros++; else break;
+    }
+    return zeros;
+}
+
+/**
+ * GENERATORS
+ * Updates:
+ * 1. SUVAT added to test B (Sub) + C (Div).
+ * 2. All generators credit ALL valid rules in 'activeCrit'.
+ * 3. Data formatted strictly (e.g. 1.20 +/- 0.01).
+ */
+const generators = [
+    // 1. PENDULUM: Standard T = 2pi sqrt(L/g). Task: Find g.
+    {
+        id: 'mech_pendulum',
+        topic: 'Mechanics',
+        // Credits C (Division L/T^2) AND D (Power T^2)
+        activeCrit: ['A', 'C', 'D', 'E', 'F', 'G'], 
+        generate: () => {
+            const uL = 0.01; 
+            const uT = 0.02;
+            
+            const L_num = randFloat(0.8, 1.2, 2); 
+            const T_num = randFloat(1.9, 2.1, 2); 
+
+            // Strict Format Strings
+            const L_str = L_num.toFixed(2);
+            const T_str = T_num.toFixed(2);
+            
+            // Calc
+            const gVal = (4 * Math.PI * Math.PI * L_num) / (T_num * T_num);
+            const pTot = (uL/L_num) + (2 * (uT/T_num));
+            const gUnc = pTot * gVal;
+
+            return {
+                text: `Calculate <b>g</b> from these measurements:`,
+                vars: `L = ${L_str} &plusmn; ${uL} m<br>T = ${T_str} &plusmn; ${uT} s`,
+                htmlEq: `T = 2&pi;<span class="radical">&radic;</span><span class="sqrt"><span class="fraction"><span class="numer">L</span><span class="denom">g</span></span></span>`,
+                type: 'abs_pair', rawVal: gVal, rawUnc: gUnc,
+                steps: [
+                    { label: "Rearrange for g", math: `g = 4&pi;²L / T²` },
+                    { label: "Calculate Value", math: `${gVal.toFixed(3)}` },
+                    { label: "Rules Used", math: `Power (D) & Division (C)` },
+                    { label: "% Unc", math: `${(pTot*100).toFixed(2)}%` },
+                    { label: "Abs Unc", math: `${gUnc.toFixed(3)}` }
+                ]
+            };
+        }
+    },
+    // 2. KINETIC ENERGY: Standard Ek = 1/2 m v^2. Task: Find v.
+    {
+        id: 'mech_ke',
+        topic: 'Mechanics',
+        // Credits C (Div Ek/m) AND D (Root/Power)
+        activeCrit: ['A', 'C', 'D', 'E', 'F', 'G'],
+        generate: () => {
+            const um = 0.01;
+            const uEk = 5; // integer
+
+            const m_num = randFloat(2, 5, 2);
+            const Ek_num = randFloat(50, 80, 0); 
+
+            const m_str = m_num.toFixed(2);
+            const Ek_str = Math.round(Ek_num).toString();
+
+            const vVal = Math.sqrt((2 * Ek_num) / m_num);
+            const pTot = 0.5 * ( (uEk/Ek_num) + (um/m_num) );
+            const vUnc = pTot * vVal;
+
+            return {
+                text: `Calculate the velocity <b>v</b> given:`,
+                vars: `E<sub>k</sub> = ${Ek_str} &plusmn; ${uEk} J<br>m = ${m_str} &plusmn; ${um} kg`,
+                htmlEq: `E_k = <span class="fraction"><span class="numer">1</span><span class="denom">2</span></span>mv<span class="power">2</span>`,
+                type: 'abs_pair', rawVal: vVal, rawUnc: vUnc,
+                steps: [
+                    { label: "Rearrange for v", math: `v = &radic;(2E_k / m)` },
+                    { label: "Calculate Value", math: `${vVal.toFixed(3)}` },
+                    { label: "Rules Used", math: `Division (C) & Root (D)` },
+                    { label: "% Unc", math: `${(pTot*100).toFixed(2)}%` },
+                    { label: "Abs Unc", math: `${vUnc.toFixed(3)}` }
+                ]
+            };
+        }
+    },
+    // 3. SUVAT (ACCELERATION): v = u + at. Task: Find a.
+    // Tests (v-u)/t -> Subtraction (B) then Division (C).
+    {
+        id: 'mech_suvat',
+        topic: 'Kinematics',
+        // Credits B (Sub) AND C (Div)
+        activeCrit: ['A', 'B', 'C', 'E', 'F', 'G'],
+        generate: () => {
+            const uv = 1;
+            const uu = 1;
+            const ut = 0.1;
+
+            const v_num = randFloat(20, 30, 0); // integers
+            const u_num = randFloat(5, 10, 0);
+            const t_num = randFloat(2, 5, 1);
+
+            const v_str = Math.round(v_num).toString();
+            const u_str = Math.round(u_num).toString();
+            const t_str = t_num.toFixed(1);
+
+            // a = (v-u)/t
+            const num = v_num - u_num;
+            const aVal = num / t_num;
+
+            // Unc Prop:
+            // 1. Numerator Abs Unc (Add abs)
+            const uNum = uv + uu; 
+            // 2. Division (Add %)
+            const pNum = uNum / num;
+            const pTime = ut / t_num;
+            const pTot = pNum + pTime;
+            const aUnc = pTot * aVal;
+
+            return {
+                text: `Calculate acceleration <b>a</b> given:`,
+                vars: `v = ${v_str} &plusmn; ${uv} m/s<br>u = ${u_str} &plusmn; ${uu} m/s<br>t = ${t_str} &plusmn; ${ut} s`,
+                htmlEq: `v = u + at`,
+                type: 'abs_pair', rawVal: aVal, rawUnc: aUnc,
+                steps: [
+                    { label: "Rearrange for a", math: `a = (v - u) / t` },
+                    { label: "Calculate Value", math: `${aVal.toFixed(3)}` },
+                    { label: "Numerator Unc (Rule B)", math: `${uv} + ${uu} = ${uNum}` },
+                    { label: "% Unc (Rule C)", math: `%Num + %t` },
+                    { label: "Abs Unc", math: `${aUnc.toFixed(3)}` }
+                ]
+            };
+        }
+    },
+    // 4. RESISTIVITY: Standard rho = RA/L. Task: Find R.
+    {
+        id: 'elec_res',
+        topic: 'Electricity',
+        // Only Mult/Div (C).
+        activeCrit: ['A', 'C', 'E', 'F', 'G'],
+        generate: () => {
+            const urho = 0.05;
+            const uL = 0.02;
+            const uA = 0.02;
+
+            const rho_num = 1.05; 
+            const L_num = randFloat(1, 2, 2);
+            const A_num = randFloat(0.5, 0.8, 2); 
+
+            const rho_str = rho_num.toFixed(2);
+            const L_str = L_num.toFixed(2);
+            const A_str = A_num.toFixed(2);
+
+            const RVal = (rho_num * L_num) / A_num;
+            const pTot = (urho/rho_num) + (uL/L_num) + (uA/A_num);
+            const RUnc = pTot * RVal;
+
+            return {
+                text: `Calculate Resistance <b>R</b> given:`,
+                vars: `&rho; = ${rho_str} &plusmn; ${urho}<br>L = ${L_str} &plusmn; ${uL}<br>A = ${A_str} &plusmn; ${uA}`,
+                htmlEq: `&rho; = <span class="fraction"><span class="numer">RA</span><span class="denom">L</span></span>`,
+                type: 'abs_pair', rawVal: RVal, rawUnc: RUnc,
+                steps: [
+                    { label: "Rearrange for R", math: `R = &rho;L / A` },
+                    { label: "Calculate Value", math: `${RVal.toFixed(3)}` },
+                    { label: "Rules Used", math: `Mult/Div Only (C)` },
+                    { label: "Abs Unc", math: `${RUnc.toFixed(3)}` }
+                ]
+            };
+        }
+    }
+];
+
+// --- RENDER & UPDATE ---
+
+function updateSidebar() {
+    const container = document.getElementById('stats-container');
+    container.innerHTML = '';
+    document.getElementById('total-score-display').innerText = `${state.totalScore}/${state.totalMax}`;
+
+    Object.keys(CATEGORIES).forEach(key => {
+        const cat = state.stats[key];
+        const historySlice = cat.history.slice(-5);
+        let dotsHtml = '';
+        for(let i=0; i<5; i++) {
+            if (i < historySlice.length) {
+                dotsHtml += `<div class="dot ${historySlice[i] ? 'pass' : 'fail'}"></div>`;
+            } else {
+                dotsHtml += `<div class="dot na"></div>`;
+            }
+        }
+        container.innerHTML += `
+            <div class="stat-row">
+                <div class="stat-header">
+                    <span>${key}. ${CATEGORIES[key]}</span>
+                    <span>${cat.correct}/${cat.total}</span>
+                </div>
+                <div class="stat-history">${dotsHtml}</div>
+            </div>
+        `;
+    });
+}
+
+function nextQuestion() {
+    document.getElementById('working-container').style.display = 'none';
+    document.getElementById('btn-check').style.display = 'inline-block';
+    document.getElementById('btn-next').style.display = 'none';
+    document.getElementById('input-container').innerHTML = '';
+
+    const gen = generators[Math.floor(Math.random() * generators.length)];
+    const qData = gen.generate();
+    state.currentQ = { ...qData, activeCrit: gen.activeCrit, topic: gen.topic };
+
+    document.getElementById('topic-badge').innerText = gen.topic;
+    document.getElementById('question-text').innerHTML = `${qData.text} <br><div style="margin-top:10px; font-family:'Courier New', monospace; color:#333;">${qData.vars}</div>`;
+    document.getElementById('equation-area').innerHTML = qData.htmlEq;
+    
+    document.getElementById('input-container').innerHTML = `
+        <span class="input-label">Value:</span>
+        <input type="text" id="inp-val" placeholder="Ans" autocomplete="off">
+        <span style="font-weight:bold; font-size:1.5rem; color:#444;">&plusmn;</span>
+        <span class="input-label">Unc:</span>
+        <input type="text" id="inp-unc" placeholder="Abs Unc" autocomplete="off">
+    `;
+}
+
+function checkAnswer() {
+    const q = state.currentQ;
+    const valStr = document.getElementById('inp-val').value.trim();
+    const uncStr = document.getElementById('inp-unc').value.trim();
+
+    if (!valStr || !uncStr) {
+        alert("Please enter both Value and Uncertainty.");
+        return;
+    }
+
+    const uVal = parseFloat(valStr);
+    const uUnc = parseFloat(uncStr);
+
+    // --- TARGETS ---
+    const rawUnc = q.rawUnc;
+    const sf = getRequiredSF(rawUnc);
+    const strictRoundedUnc = roundToSF(rawUnc, sf); 
+
+    // Target Precision
+    const sUncTarget = strictRoundedUnc.toString();
+    let precisionMag = 0; 
+    let targetDP = 0;
+    if (sUncTarget.includes('.')) {
+        targetDP = getDP(sUncTarget);
+        precisionMag = -targetDP;
+    } else {
+        precisionMag = getLastDigitMag(sUncTarget);
+    }
+    
+    // Strict Rounded Value
+    let strictRoundedVal = 0;
+    if (precisionMag < 0) {
+        strictRoundedVal = parseFloat(q.rawVal.toFixed(targetDP));
+    } else {
+        const factor = Math.pow(10, precisionMag);
+        strictRoundedVal = Math.round(q.rawVal / factor) * factor;
+    }
+
+    // --- INDEPENDENT GRADING ---
+    let qScore = 0;
+    let qTotal = 0;
+    let feedbackNotes = [];
+
+    q.activeCrit.forEach(crit => {
+        let passed = false;
+        switch(crit) {
+            case 'A': // Value Calc
+                passed = Math.abs((uVal - q.rawVal)/q.rawVal) < 0.02;
+                break;
+
+            case 'B': case 'C': case 'D': case 'E': 
+                // Method/Abs Unc Calc
+                const closeToRaw = Math.abs((uUnc - q.rawUnc)/q.rawUnc) < 0.05;
+                const closeToRounded = Math.abs(uUnc - strictRoundedUnc) < (strictRoundedUnc * 0.05);
+                passed = closeToRaw || closeToRounded;
+                break;
+
+            case 'F': // Sig Figs
+                const uStrClean = uncStr.replace('.', '').replace(/^0+/, '');
+                if (uStrClean.length === 0) { passed = false; break; }
+                const firstDigit = parseInt(uStrClean[0]);
+                const requiredSF = (firstDigit === 1) ? 2 : 1;
+                const actualSF = countStringSF(uncStr);
+                passed = (actualSF === requiredSF);
+                break;
+
+            case 'G': // Precision Match
+                if (valStr.includes('.') || uncStr.includes('.')) {
+                     passed = getDP(valStr) === getDP(uncStr);
+                } else {
+                    const uMag = getLastDigitMag(uncStr);
+                    const factor = Math.pow(10, uMag);
+                    passed = (uVal % factor === 0);
+                }
+                break;
+        }
+
+        state.stats[crit].total++;
+        if (passed) {
+            state.stats[crit].correct++;
+            state.stats[crit].history.push(true);
+            qScore++;
+        } else {
+            state.stats[crit].history.push(false);
+            feedbackNotes.push(`${CATEGORIES[crit]} failed`);
+        }
+        qTotal++;
+    });
+
+    state.totalScore += qScore;
+    state.totalMax += qTotal;
+    updateSidebar();
+
+    // Feedback
+    const fbBanner = document.getElementById('feedback-banner');
+    if (qScore === qTotal) {
+        fbBanner.className = 'feedback-banner fb-success';
+        fbBanner.innerHTML = `Perfect! ${qScore}/${qTotal}`;
+    } else if (qScore > 0) {
+        fbBanner.className = 'feedback-banner fb-partial';
+        fbBanner.innerHTML = `Partial Credit: ${qScore}/${qTotal}<br><small>${feedbackNotes.join(', ')}</small>`;
+    } else {
+        fbBanner.className = 'feedback-banner fb-fail';
+        fbBanner.innerHTML = `Incorrect: ${qScore}/${qTotal}`;
+    }
+
+    const stepsContainer = document.getElementById('working-steps');
+    stepsContainer.innerHTML = '';
+    
+    q.steps.forEach(step => {
+        stepsContainer.innerHTML += `<div class="wc-row"><span class="wc-label">${step.label}</span><span class="wc-math">${step.math}</span></div>`;
+    });
+    
+    stepsContainer.innerHTML += `
+        <div class="wc-row wc-final">
+            <span class="wc-label" style="color:#004085;">Target Answer</span> 
+            <span class="wc-math">${strictRoundedVal} &plusmn; ${strictRoundedUnc}</span>
+        </div>
+    `;
+
+    document.getElementById('working-container').style.display = 'block';
+    document.getElementById('btn-check').style.display = 'none';
+    document.getElementById('btn-next').style.display = 'inline-block';
+}
+
+// Start
+updateSidebar();
+nextQuestion();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Photoelectric Effect: Wave vs Particle (v1.1)</title>
+  <style>
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:#121212; color:#eee; margin:0;
+      display:flex; flex-direction:column; align-items:center; min-height:100vh;
+    }
+    h1{ margin:18px 10px 8px; font-weight:300; letter-spacing:.5px; text-align:center; }
+    .controls{
+      background:#1e1e1e; padding:16px 18px; border-radius:10px;
+      display:flex; gap:22px; flex-wrap:wrap; justify-content:center;
+      margin:8px 12px 18px; box-shadow:0 4px 6px rgba(0,0,0,.35);
+      max-width:1100px;
+    }
+    .control-group{ display:flex; flex-direction:column; gap:6px; min-width:220px; align-items:center; }
+    label{ font-size:.9rem; color:#bbb; }
+    input[type=range]{ width:220px; cursor:pointer; }
+    .row{ display:flex; flex-wrap:wrap; justify-content:center; gap:18px; width:100%; max-width:1200px; }
+    .panel{
+      background:#000; border:1px solid #333; border-radius:10px; overflow:hidden;
+      width:520px; max-width:92vw;
+    }
+    .panel-header{
+      background:#222; padding:10px 12px; font-weight:650; border-bottom:1px solid #333;
+      display:flex; justify-content:space-between; align-items:center; gap:10px;
+    }
+    .panel-header .tag{ font-size:.8rem; color:#bbb; font-weight:500; }
+    .desc{
+      background:#191919; border-bottom:1px solid #333;
+      padding:10px 12px; font-size:.88rem; color:#cfcfcf; line-height:1.35;
+    }
+    canvas{ display:block; background: radial-gradient(circle at center top, #1a1a1a, #000); }
+    .legend{
+      display:flex; gap:16px; flex-wrap:wrap; justify-content:center;
+      font-size:.82rem; color:#aaa; margin:10px 10px 18px;
+    }
+    .dot{ width:10px; height:10px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle; }
+    button{
+      padding:7px 14px; border:1px solid #444; background:#2a2a2a; color:#eee;
+      border-radius:8px; cursor:pointer;
+    }
+    button:hover{ background:#333; }
+    .readout{ font-size:.82rem; color:#ddd; }
+    .subtle{ color:#aaa; }
+  </style>
+</head>
+<body>
+
+<h1>Photoelectric Effect: Classical Wave vs Photon Model</h1>
+
+<div class="controls">
+  <div class="control-group">
+    <label for="intensity">Intensity (brightness)</label>
+    <input type="range" id="intensity" min="1" max="10" value="3" />
+    <div class="subtle" id="intensityLabel">3</div>
+  </div>
+
+  <div class="control-group">
+    <label for="frequency">Frequency (colour / photon energy)</label>
+    <input type="range" id="frequency" min="0" max="5" value="2" />
+    <div class="subtle" id="freqLabel">Yellow</div>
+  </div>
+
+  <div class="control-group">
+    <label for="loss">Wave model losses (to lattice)</label>
+    <input type="range" id="loss" min="0" max="20" value="2" />
+    <div class="subtle" id="lossLabel">2%</div>
+  </div>
+
+  <div class="control-group">
+    <label for="workFn">Work function φ</label>
+    <input type="range" id="workFn" min="20" max="120" value="60" />
+    <div class="subtle" id="workFnLabel">60</div>
+  </div>
+
+  <div class="control-group">
+    <label>&nbsp;</label>
+    <button id="resetBtn">Reset electrons</button>
+  </div>
+</div>
+
+<div class="row">
+  <div class="panel">
+    <div class="panel-header">
+      <div>Classical Wave Model</div>
+      <div class="tag" id="waveHud">—</div>
+    </div>
+    <div class="desc">
+      Light is a continuous wave. Energy is spread over the surface, so <b>all</b> electrons
+      gain energy gradually (rate set by intensity). In this classical picture, there is no
+      threshold frequency: given enough time, emission should eventually occur.
+    </div>
+    <canvas id="waveCanvas" width="520" height="320"></canvas>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div>Photon (Particle) Model</div>
+      <div class="tag" id="partHud">—</div>
+    </div>
+    <div class="desc">
+      Light arrives as photons. Each interaction is <b>one photon → one electron</b>.
+      If <b>hf ≥ φ</b>, emission is immediate and the electron leaves with <b>KE = hf − φ</b>.
+      If <b>hf &lt; φ</b>, no photoelectrons are emitted (even at high intensity).
+    </div>
+    <canvas id="particleCanvas" width="520" height="320"></canvas>
+  </div>
+</div>
+
+<div class="legend">
+  <span><span class="dot" style="background:lime;"></span>Bound electron</span>
+  <span><span class="dot" style="background:white; border:1px solid lime;"></span>Ejected electron</span>
+</div>
+
+<script>
+(() => {
+  const WIDTH = 520, HEIGHT = 320;
+  const METAL_Y = 235;
+  const NUM_ELECTRONS = 9;
+
+  // Frequency “bins” for visuals; hf scale is arbitrary but consistent.
+  const freqNames = ["Infrared","Red","Yellow","Green","Blue","Ultraviolet"];
+  const colors    = ["#9b2cff","#ff3333","#ffff00","#00ff55","#00ccff","#cc00ff"];
+  const hfScale = 20; // photonEnergy = (freqIndex+1) * hfScale
+
+  const waveCanvas = document.getElementById("waveCanvas");
+  const waveCtx = waveCanvas.getContext("2d");
+  const partCanvas = document.getElementById("particleCanvas");
+  const partCtx = partCanvas.getContext("2d");
+
+  const intensityEl = document.getElementById("intensity");
+  const frequencyEl = document.getElementById("frequency");
+  const lossEl = document.getElementById("loss");
+  const workFnEl = document.getElementById("workFn");
+
+  const intensityLabel = document.getElementById("intensityLabel");
+  const freqLabel = document.getElementById("freqLabel");
+  const lossLabel = document.getElementById("lossLabel");
+  const workFnLabel = document.getElementById("workFnLabel");
+
+  const waveHud = document.getElementById("waveHud");
+  const partHud = document.getElementById("partHud");
+
+  let waveOffset = 0;
+
+  class Electron {
+    constructor(x){
+      this.x = x;
+      this.reset();
+    }
+    reset(){
+      this.y = METAL_Y + 10;
+      this.energy = 0;      // “stored energy” (wave model) or last-hit energy (photon model)
+      this.isEjected = false;
+      this.vy = 0;
+      this.wasCounted = false;
+    }
+    eject(workFn){
+      this.isEjected = true;
+      const excess = Math.max(0, this.energy - workFn);
+      this.vy = 2.0 + 0.08 * excess;
+      if (this.vy > 9) this.vy = 9;
+    }
+    update(workFn){
+      if (this.isEjected){
+        this.y -= this.vy;
+        if (this.y < -30) this.reset();
+      } else {
+        // small jiggle proportional to energy
+        this.y = (METAL_Y + 10) + (Math.random() - 0.5) * (this.energy / 10);
+        if (this.energy >= workFn) this.eject(workFn);
+      }
+    }
+    draw(ctx, workFn){
+      const r = 6;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, r, 0, Math.PI*2);
+
+      if (this.isEjected){
+        ctx.fillStyle = "#fff";
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = "white";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        // Bound electron colour shifts with fraction of work function
+        const frac = Math.min(1, this.energy / workFn);
+        const lightness = 40 + 45*frac;
+        ctx.fillStyle = `hsl(120, 100%, ${lightness}%)`;
+        ctx.shadowBlur = 8*frac;
+        ctx.shadowColor = "lime";
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // energy bar
+        ctx.fillStyle = "#555";
+        ctx.fillRect(this.x - 10, this.y - 16, 20, 4);
+        ctx.fillStyle = frac >= 1 ? "white" : "lime";
+        ctx.fillRect(this.x - 10, this.y - 16, 20 * frac, 4);
+      }
+
+      ctx.closePath();
+    }
+  }
+
+  class Photon {
+    constructor(freqIndex){
+      this.freqIndex = freqIndex;
+      this.color = colors[freqIndex];
+      this.reset();
+    }
+    reset(){
+      this.x = Math.random() * WIDTH;
+      this.y = -20;
+      this.speed = 4 + Math.random()*2;
+      this.active = true;
+    }
+    update(electrons, workFn){
+      if (!this.active) return;
+      this.y += this.speed;
+
+      // Interaction region near surface
+      if (this.y > METAL_Y && this.y < METAL_Y + 25){
+        for (const e of electrons){
+          if (!e.isEjected && Math.abs(this.x - e.x) < 18){
+            this.active = false;
+            const photonEnergy = (this.freqIndex + 1) * hfScale;
+
+            // Key photoelectric rule: single photon transfers its energy in one go.
+            if (photonEnergy >= workFn){
+              e.energy = photonEnergy;
+              e.eject(workFn);
+            } else {
+              // Below threshold: no emission. Brief “heating” flash only.
+              e.energy = Math.max(e.energy, 0.15 * photonEnergy);
+              setTimeout(() => { if(!e.isEjected) e.energy *= 0.2; }, 120);
+            }
+            break;
+          }
+        }
+      }
+
+      if (this.y > HEIGHT + 10) this.active = false;
+    }
+    draw(ctx){
+      if (!this.active) return;
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, 4, 0, Math.PI*2);
+      ctx.fillStyle = this.color;
+      ctx.fill();
+
+      // tiny “wiggle trail”
+      ctx.strokeStyle = this.color;
+      ctx.beginPath();
+      ctx.moveTo(this.x, this.y);
+      ctx.lineTo(this.x - Math.sin(this.y/6)*6, this.y - 12);
+      ctx.stroke();
+    }
+  }
+
+  function drawBackground(ctx){
+    ctx.clearRect(0,0,WIDTH,HEIGHT);
+
+    // metal
+    ctx.fillStyle = "#2f2f2f";
+    ctx.fillRect(0, METAL_Y, WIDTH, HEIGHT - METAL_Y);
+    ctx.strokeStyle = "#666";
+    ctx.beginPath();
+    ctx.moveTo(0, METAL_Y);
+    ctx.lineTo(WIDTH, METAL_Y);
+    ctx.stroke();
+  }
+
+  // Initialise electrons in both panels
+  const spacing = WIDTH/(NUM_ELECTRONS+1);
+  const waveElectrons = Array.from({length:NUM_ELECTRONS}, (_,i)=> new Electron(spacing*(i+1)));
+  const partElectrons = Array.from({length:NUM_ELECTRONS}, (_,i)=> new Electron(spacing*(i+1)));
+
+  let photons = [];
+
+  // simple “current” counters
+  let lastT = performance.now();
+  let waveEjectedCount = 0, partEjectedCount = 0;
+  let waveRate = 0, partRate = 0;
+
+  function resetAll(){
+    waveElectrons.forEach(e=>e.reset());
+    partElectrons.forEach(e=>e.reset());
+    photons = [];
+    waveEjectedCount = partEjectedCount = 0;
+    waveRate = partRate = 0;
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", resetAll);
+
+  function updateHud(intensity, freqIndex, workFn){
+    intensityLabel.textContent = String(intensity);
+    freqLabel.textContent = freqNames[freqIndex];
+    freqLabel.style.color = colors[freqIndex];
+
+    const lossPct = Number(lossEl.value);
+    lossLabel.textContent = `${lossPct}%`;
+    workFnLabel.textContent = String(workFn);
+
+    const photonEnergy = (freqIndex+1)*hfScale;
+    waveHud.textContent = `Intensity: ${intensity} | Loss: ${lossPct}% | Emission rate: ${waveRate.toFixed(1)}/s`;
+    partHud.textContent = `hf: ${photonEnergy} | φ: ${workFn} | ${photonEnergy>=workFn ? "emits" : "no emission"} | Rate: ${partRate.toFixed(1)}/s`;
+  }
+
+  function updateRates(now){
+    const dt = (now - lastT)/1000;
+    if (dt >= 0.5){
+      waveRate = waveEjectedCount/dt;
+      partRate = partEjectedCount/dt;
+      waveEjectedCount = 0;
+      partEjectedCount = 0;
+      lastT = now;
+    }
+  }
+
+  function loop(now){
+    updateRates(now);
+
+    const intensity = Number(intensityEl.value);
+    const freqIndex = Number(frequencyEl.value);
+    const workFn = Number(workFnEl.value);
+    const lossFrac = Number(lossEl.value) / 100;
+
+    updateHud(intensity, freqIndex, workFn);
+
+    // --- WAVE MODEL UPDATE ---
+    // Total wave energy arriving per frame (arbitrary units)
+    let incoming = intensity * 0.8;
+
+    // Distribute across all electrons with small random variation
+    const meanShare = incoming / waveElectrons.length;
+
+    // Optional “thermalisation”: pull energies toward mean to mimic sharing/collisions
+    const thermalise = 0.02;
+
+    const meanE = waveElectrons.reduce((s,e)=>s+(e.isEjected?0:e.energy),0) / waveElectrons.length;
+
+    for (const e of waveElectrons){
+      if (!e.isEjected){
+        // each electron gets roughly equal share + noise
+        const noise = (Math.random()-0.5) * 0.35 * meanShare;
+        e.energy += Math.max(0, meanShare + noise);
+
+        // losses to lattice
+        e.energy *= (1 - lossFrac);
+
+        // thermalisation (gentle equalising)
+        e.energy += (meanE - e.energy) * thermalise;
+      }
+      const wasEjected = e.isEjected;
+      e.update(workFn);
+      if (!wasEjected && e.isEjected && !e.wasCounted){
+        waveEjectedCount++;
+        e.wasCounted = true;
+      }
+      if (!e.isEjected) e.wasCounted = false;
+    }
+
+    // --- PHOTON MODEL UPDATE ---
+    // intensity controls photon flux (spawn probability)
+    const spawnP = intensity * 0.06;
+    if (Math.random() < spawnP) photons.push(new Photon(freqIndex));
+
+    for (const e of partElectrons){
+      const wasEjected = e.isEjected;
+      e.update(workFn);
+      if (!wasEjected && e.isEjected && !e.wasCounted){
+        partEjectedCount++;
+        e.wasCounted = true;
+      }
+      if (!e.isEjected) e.wasCounted = false;
+    }
+
+    for (const p of photons) p.update(partElectrons, workFn);
+    photons = photons.filter(p=>p.active);
+
+    // --- DRAW WAVE PANEL ---
+    drawBackground(waveCtx);
+    waveOffset += 1 + 0.7*freqIndex; // purely visual; does not affect transfer in wave model
+
+    const c = colors[freqIndex];
+    const r = parseInt(c.slice(1,3),16), g = parseInt(c.slice(3,5),16), b = parseInt(c.slice(5,7),16);
+    waveCtx.strokeStyle = `rgba(${r},${g},${b},0.28)`;
+    waveCtx.lineWidth = 2;
+
+    for (let y=0; y<METAL_Y; y+=22){
+      waveCtx.beginPath();
+      for (let x=0; x<=WIDTH; x+=10){
+        const yy = y + Math.sin((x/55) + (waveOffset/14) + y/80) * 6;
+        if (x===0) waveCtx.moveTo(x,yy); else waveCtx.lineTo(x,yy);
+      }
+      waveCtx.stroke();
+    }
+
+    // work function marker line in “energy bar space”
+    waveCtx.fillStyle = "#ddd";
+    waveCtx.font = "12px Arial";
+    waveCtx.fillText("Energy shared across many electrons (continuous)", 10, 20);
+
+    waveElectrons.forEach(e=>e.draw(waveCtx, workFn));
+
+    // --- DRAW PHOTON PANEL ---
+    drawBackground(partCtx);
+    partCtx.fillStyle = "#ddd";
+    partCtx.font = "12px Arial";
+    partCtx.fillText("Discrete photons: one interaction gives one electron a full hit", 10, 20);
+
+    photons.forEach(p=>p.draw(partCtx));
+    partElectrons.forEach(e=>e.draw(partCtx, workFn));
+
+    requestAnimationFrame(loop);
+  }
+
+  requestAnimationFrame(loop);
+})();
+</script>
+
+</body>
+</html>

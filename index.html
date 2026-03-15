@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IB Physics Interactive Resources</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        header h1 {
+            margin: 0;
+            font-size: 2.5rem;
+        }
+        header p {
+            margin: 10px 0 0 0;
+            font-size: 1.1rem;
+            color: #bdc3c7;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            margin-top: 40px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .card {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            text-decoration: none;
+            color: inherit;
+            border: 1px solid #e1e8ed;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.1);
+            border-color: #3498db;
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .topic-badge {
+            background-color: #e74c3c;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 0.85rem;
+        }
+        .card-title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin: 0;
+            color: #2980b9;
+        }
+        .card-desc {
+            font-size: 0.95rem;
+            color: #555;
+            margin-top: 10px;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+        .launch-btn {
+            margin-top: 15px;
+            color: #3498db;
+            font-weight: bold;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>IB Physics Resources</h1>
+        <p>Interactive skill builders and visualisations for the IB Diploma</p>
+    </header>
+
+    <div class="container">
+        <h2>Skill Builders</h2>
+        <div id="skill-builders-grid" class="grid">
+            </div>
+
+        <h2>Visualisations</h2>
+        <div id="visualisations-grid" class="grid">
+            </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ADD YOUR FILES HERE
+        // ==========================================
+        // Just copy an existing block, paste it below, and change the text!
+        // Make sure the 'filename' exactly matches your HTML file in the folder.
+        
+        const resources = [
+            {
+                category: "skill", // Must be "skill" or "visualisation"
+                topicCode: "B4",
+                title: "1st Law of Thermodynamics",
+                description: "Embed 1st Law of Thermodynamics ideas.",
+                filename: "1st law of td gemini v8.html"
+            },
+            {
+                category: "visualisation",
+                topicCode: "C3",
+                title: "Refraction Tank Analogy",
+                description: "Adjust the speeds in grass and mud.  Change the initial angles and the orientation of the interfaces.  Note it will simulate total internal reflection too if you start it in the mud.",
+                filename: "tankrefraction_v10f_tank_refraction_analogy.html" 
+            },
+            {
+                category: "skill",
+                topicCode: "Uncertainties",
+                title: "Uncertainty Propagation Questions",
+                description: "Awards points for each part-skill.  Will in future split them off so they can be practised separately, but currently requires full question to be done.",
+                filename: "gemini uncertainy qs v8.html"
+            }
+ 		{
+                category: "skill", 
+                topicCode: "Graphing",
+                title: "Graphing Skills",
+                description: "Although this was built mainly for younger pupils than you, module 8, calculating gradient, was written with IB in mind.",
+                filename: "https://physicalsmithness.github.io/graphingskills/"
+            }
+{
+                category: "visualisation",
+                topicCode: "E2",
+                title: "Photoelectric effect",
+                description: "The purpose of this visualisation is to show what would happen according to classical physics alongside the photon model.  Use phet for far more detail on the photon model.  But many questions ask for an explanation of why the wave model of light cannot explain the behaviour, so the left-hand pane is built to help you understand this.",
+                filename: "tankrefraction_v10f_tank_refraction_analogy.html" 
+            }
+        ];
+
+        // ==========================================
+        // ENGINE: You don't need to touch anything below this line!
+        // ==========================================
+
+        function renderCards() {
+            const skillGrid = document.getElementById('skill-builders-grid');
+            const visGrid = document.getElementById('visualisations-grid');
+
+            resources.forEach(item => {
+                // Create the HTML for the card
+                const cardHTML = `
+                    <a href="${item.filename}" class="card">
+                        <div class="card-header">
+                            <span class="topic-badge">${item.topicCode}</span>
+                        </div>
+                        <h3 class="card-title">${item.title}</h3>
+                        <p class="card-desc">${item.description}</p>
+                        <div class="launch-btn">Launch &rarr;</div>
+                    </a>
+                `;
+
+                // Inject it into the correct category
+                if (item.category === 'skill') {
+                    skillGrid.innerHTML += cardHTML;
+                } else if (item.category === 'visualisation') {
+                    visGrid.innerHTML += cardHTML;
+                }
+            });
+        }
+
+        // Run the render function when the page loads
+        window.onload = renderCards;
+    </script>
+</body>
+</html>

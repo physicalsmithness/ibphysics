@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>1st Law of Thermodynamics Quiz (IB Convention)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f4f8;
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .quiz-container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            max-width: 650px;
+            width: 100%;
+            text-align: center;
+            box-sizing: border-box;
+            overflow-y: auto;
+            max-height: 95vh;
+        }
+        h1 {
+            font-size: 1.5rem;
+            color: #2c3e50;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        .scoreboard {
+            display: flex;
+            justify-content: space-around;
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 0.95rem;
+        }
+        .scoreboard span {
+            color: #2980b9;
+        }
+        .settings-box {
+            background-color: #fdfbf7;
+            border: 1px solid #e1d8c1;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+            text-align: left;
+            display: inline-block;
+        }
+        .settings-box label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .settings-box input {
+            margin-right: 10px;
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+        .question-box {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            min-height: 80px;
+        }
+        
+        /* Input Area for Math */
+        #input-area {
+            margin-bottom: 20px;
+            display: none;
+        }
+        #input-area input {
+            padding: 10px;
+            font-size: 1.1rem;
+            width: 120px;
+            text-align: center;
+            border: 2px solid #bdc3c7;
+            border-radius: 6px;
+            margin-right: 10px;
+        }
+        #input-area input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        /* MCQ Area for Conceptual */
+        #mcq-area {
+            text-align: left;
+            margin: 0 auto 20px auto;
+            max-width: 90%;
+            display: none;
+        }
+        .mcq-label {
+            display: block;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s, border-color 0.2s;
+        }
+        .mcq-label:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
+        }
+        .mcq-label input[type="radio"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        .feedback-box {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            min-height: 45px;
+        }
+        .correct { color: #27ae60; }
+        .incorrect { color: #c0392b; }
+        .explainer-text {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: normal;
+            font-style: italic;
+            color: #555;
+            margin-top: 10px;
+            line-height: 1.4;
+            padding: 12px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            border-radius: 4px;
+            text-align: left;
+        }
+        
+        .controls button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            transition: background-color 0.2s;
+        }
+        .controls button:hover {
+            background-color: #2980b9;
+        }
+        .controls button:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="quiz-container">
+        <h1>Thermodynamics: 1st Law Practice</h1>
+        
+        <div class="scoreboard">
+            <div>Score: <span id="score-text">0/0</span></div>
+            <div>Accuracy: <span id="percent-text">0%</span></div>
+            <div>Last 10: <span id="history-text">-</span></div>
+        </div>
+
+        <div class="settings-box">
+            <label>
+                <input type="checkbox" id="vocab-toggle" onchange="loadNewQuestion()">
+                Tick box if process vocabulary ideas are known (e.g., Adiabatic, Isothermal)
+            </label>
+        </div>
+
+        <div id="question" class="question-box">Loading...</div>
+        
+        <div id="input-area">
+            <input type="text" id="user-answer" placeholder="e.g. -100 or +100" autocomplete="off">
+            <span style="font-size: 1.2rem;">Joules</span>
+        </div>
+
+        <div id="mcq-area">
+            </div>
+
+        <div id="feedback" class="feedback-box"></div>
+        
+        <div class="controls">
+            <button id="submit-btn" onclick="checkAnswer()">Submit Answer</button>
+            <button id="next-btn" onclick="loadNewQuestion()" disabled>Next Question</button>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestionType = ""; 
+        let currentAnswer = null; 
+        let currentCorrectMcqText = ""; 
+        let currentExplainer = "";
+        
+        let totalAttempted = 0;
+        let totalCorrect = 0;
+        let answerHistory = [];
+
+        function randomRoundInt(min, max, step) {
+            let steps = Math.floor((max - min) / step);
+            return min + (Math.floor(Math.random() * (steps + 1)) * step);
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function getProcessText(processType, useVocab) {
+            if (processType === 'adiabatic') {
+                return useVocab ? "In an adiabatic process," : "In a process where no heat is exchanged (adiabatic),";
+            }
+            if (processType === 'isovolumetric') {
+                return useVocab ? "In an isovolumetric process," : "In a process where the volume is constant and no work is done (isovolumetric),";
+            }
+            if (processType === 'isothermal') {
+                return useVocab ? "In an isothermal process on an ideal gas," : "In a process where the temperature remains constant and internal energy does not change (isothermal),";
+            }
+            return "";
+        }
+
+        function generateQuestion() {
+            let useVocab = document.getElementById("vocab-toggle").checked;
+
+            const questionBanks = [
+                // 1. Standard Q and W -> ΔU
+                function() {
+                    let q = randomRoundInt(400, 950, 50);
+                    let w = randomRoundInt(50, 350, 50);
+                    return {
+                        type: 'math',
+                        q: `A system absorbs ${q} J of heat from its surroundings and does ${w} J of work on its surroundings. What is the change in its internal energy?`,
+                        a: q - w,
+                        explainer: `Think of it intuitively: you pour energy into the system as heat, and the system immediately spends some of that energy doing work. What is left over is the internal energy.<br><br>Using the IB formula Q = ΔU + W (where Q is heat IN and W is work BY the system), we substitute our values to get +${q} = ΔU + (+${w}). Rearranging this gives ΔU = ${q - w} J.`
+                    };
+                },
+                // 2. Expansion cooling (Negative ΔU trap)
+                function() {
+                    let q = randomRoundInt(50, 350, 50);
+                    let w = randomRoundInt(400, 900, 50);
+                    return {
+                        type: 'math',
+                        q: `A system absorbs ${q} J of heat from its surroundings, but simultaneously expands, doing ${w} J of work. What is the change in its internal energy?`,
+                        a: q - w, 
+                        explainer: `The system spent more energy doing work by expanding (${w} J) than it received as heat (${q} J). To make up the difference, it dips into its own internal energy, causing it to cool down.<br><br>Using Q = ΔU + W (where Q is heat IN and W is work BY the system), we get +${q} = ΔU + (+${w}). Rearranging this gives ΔU = ${q - w} J.`
+                    };
+                },
+                // 3. Isothermal Reverse Work (Negative answer trap)
+                function() {
+                    let q = randomRoundInt(200, 850, 50);
+                    let intro = getProcessText('isothermal', useVocab);
+                    return {
+                        type: 'math',
+                        q: `${intro} the system absorbs ${q} J of heat. What is the work done on the system?`,
+                        a: -q, 
+                        explainer: `To keep the temperature constant while absorbing heat, the system must immediately expend that energy by doing work (pushing outwards).<br><br>Using Q = ΔU + W (where Q is heat IN and W is work BY the system): we know ΔU = 0 and Q = +${q}. This makes +${q} = 0 + W, so W = +${q} J. Because W represents work done BY the system, and the question asks for work done ON the system, we must flip the sign to -${q} J.`
+                    };
+                },
+                // 4. Isothermal Reverse Heat (Negative answer trap)
+                function() {
+                    let w = randomRoundInt(200, 750, 50);
+                    let intro = getProcessText('isothermal', useVocab);
+                    return {
+                        type: 'math',
+                        q: `${intro} the gas expands, doing ${w} J of work. What is the heat transferred from the system to the surroundings?`,
+                        a: -w, 
+                        explainer: `Isothermal means ΔU = 0. To do work by expanding without cooling down, the gas must absorb heat from its surroundings.<br><br>Using Q = ΔU + W (where Q is heat IN and W is work BY the system): we know ΔU = 0 and W = +${w}. This gives Q = 0 + (+${w}), meaning Q = +${w} J. Because Q represents heat IN, and the question asks for the heat transferred FROM the system (heat OUT), the answer is -${w} J.`
+                    };
+                },
+                // 5. Adiabatic Expansion (Negative ΔU trap)
+                function() {
+                    let w = randomRoundInt(150, 800, 50);
+                    let intro = getProcessText('adiabatic', useVocab);
+                    return {
+                        type: 'math',
+                        q: `${intro} the system expands rapidly, doing ${w} J of work on its surroundings. What is the change in the system's internal energy?`,
+                        a: -w, 
+                        explainer: `Adiabatic means NO heat can enter or leave. If the system does work by expanding, it is spending energy. Since it cannot draw in heat to fuel that work, it must drain its own internal energy.<br><br>Using Q = ΔU + W (where Q is heat IN and W is work BY the system): we know Q = 0 and W = +${w}. This gives 0 = ΔU + (+${w}), so rearranging gives ΔU = -${w} J.`
+                    };
+                },
+                // 6. Isovolumetric Reverse Heat (Positive trap)
+                function() {
+                    let dU = randomRoundInt(200, 900, 50);
+                    let intro = getProcessText('isovolumetric', useVocab);
+                    return {
+                        type: 'math',
+                        q: `${intro} the system's internal energy decreases by ${dU} J. What is the heat transferred from the system?`,
+                        a: dU, 
+                        explainer: `Isovolumetric means NO work is done. If internal energy decreases, it must have lost that exact amount of energy as heat.<br><br>Using Q = ΔU + W (where Q is heat IN and W is work BY the system): we know W = 0 and ΔU = -${dU}. This gives Q = -${dU} + 0, so Q = -${dU} J. A negative Q means heat is leaving. Because the question asks for the heat transferred FROM the system, it is a positive ${dU} J.`
+                    };
+                },
+                // 7. ZERO trap: Isovolumetric Work
+                function() {
+                    let q = randomRoundInt(250, 850, 50);
+                    let intro = getProcessText('isovolumetric', useVocab);
+                    return {
+                        type: 'math',
+                        q: `${intro} the system absorbs ${q} J of heat. What is the work done by the system?`,
+                        a: 0,
+                        explainer: `Work in thermodynamics requires a physical change in volume (expanding or compressing). Because the process is isovolumetric, the volume is locked constant, meaning it is physically impossible for the system to do ANY work.<br><br>Therefore, W = 0 J. (All ${q} J of heat goes directly into increasing ΔU).`
+                    };
+                },
+                // 8. ZERO trap: Cyclic ΔU
+                function() {
+                    let q = randomRoundInt(300, 950, 50);
+                    return {
+                        type: 'math',
+                        q: `A system undergoes a complete thermodynamic cycle, returning to its exact initial state. During this cycle, it absorbs ${q} J of heat and does ${q} J of work. What is the total change in its internal energy for the entire cycle?`,
+                        a: 0,
+                        explainer: "Internal energy is a state function, meaning it depends only on the system's current condition. If a cycle returns the system to its EXACT starting point (same temperature and pressure), its final internal energy is identical to its initial internal energy. The total change is exactly 0 J."
+                    };
+                },
+                // 9. Conceptual MCQ: Isobaric
+                function() {
+                    return {
+                        type: 'mcq',
+                        q: `In an isobaric process, the pressure of the system remains constant. As the system expands and its volume changes, what is true about the work being done?`,
+                        options: [
+                            "Work is done, and it can be calculated as Pressure × Change in Volume.",
+                            "No work is done because pressure is constant.",
+                            "Work is equal to the internal energy.",
+                            "The work done is perfectly balanced by the heat released."
+                        ],
+                        a: 0, 
+                        explainer: "Work is literally the act of a system pushing its boundaries outwards. If the volume increases, the system had to physically shove the outside air out of the way, which costs energy. Constant pressure just means it shoved with a steady, unchanging force."
+                    };
+                },
+                // 10. Conceptual MCQ: State Function
+                function() {
+                    return {
+                        type: 'mcq',
+                        q: `Internal energy (U) is a "state function". What does this mean?`,
+                        options: [
+                            "It depends only on the current state of the system, not how it got there.",
+                            "It depends entirely on the path taken to reach that state.",
+                            "It is always constant for any process.",
+                            "It only applies to systems in solid states."
+                        ],
+                        a: 0, 
+                        explainer: "Think of a state function like your altitude on a mountain. It only matters how high up you currently are (the state), regardless of whether you took a helicopter or hiked a winding trail (the path) to get there."
+                    };
+                }
+            ];
+
+            let randomIndex = Math.floor(Math.random() * questionBanks.length);
+            return questionBanks[randomIndex]();
+        }
+
+        function updateScoreboard() {
+            document.getElementById("score-text").textContent = `${totalCorrect}/${totalAttempted}`;
+            let percent = totalAttempted === 0 ? 0 : Math.round((totalCorrect / totalAttempted) * 100);
+            document.getElementById("percent-text").textContent = `${percent}%`;
+
+            let historyStr = answerHistory.map(isCorrect => isCorrect ? "✅" : "❌").join(" ");
+            document.getElementById("history-text").textContent = historyStr || "-";
+        }
+
+        function checkAnswer() {
+            let feedbackDiv = document.getElementById("feedback");
+            let isCorrect = false;
+            let displayCorrectAnswer = "";
+
+            if (currentQuestionType === 'math') {
+                let inputField = document.getElementById("user-answer");
+                let userAnswer = parseInt(inputField.value);
+                
+                if (isNaN(userAnswer)) {
+                    feedbackDiv.textContent = "Please enter a number!";
+                    feedbackDiv.className = "feedback-box incorrect";
+                    return;
+                }
+                
+                isCorrect = (userAnswer === currentAnswer);
+                let signString = currentAnswer > 0 ? "+" : "";
+                displayCorrectAnswer = `${signString}${currentAnswer} J`;
+                
+                inputField.disabled = true;
+
+            } else if (currentQuestionType === 'mcq') {
+                let selectedOption = document.querySelector('input[name="mcq"]:checked');
+                
+                if (!selectedOption) {
+                    feedbackDiv.textContent = "Please select an answer!";
+                    feedbackDiv.className = "feedback-box incorrect";
+                    return;
+                }
+
+                isCorrect = (selectedOption.value === "true");
+                displayCorrectAnswer = currentCorrectMcqText;
+                
+                let radios = document.querySelectorAll('input[name="mcq"]');
+                radios.forEach(radio => radio.disabled = true);
+            }
+
+            totalAttempted++;
+
+            if (isCorrect) {
+                totalCorrect++;
+                answerHistory.push(true);
+                let signString = (currentQuestionType === 'math' && currentAnswer > 0) ? "+" : "";
+                let correctMsg = currentQuestionType === 'math' ? `Spot on! The answer is ${signString}${currentAnswer} J.` : "Spot on! Well done.";
+                
+                feedbackDiv.textContent = correctMsg;
+                feedbackDiv.className = "feedback-box correct";
+            } else {
+                answerHistory.push(false);
+                feedbackDiv.innerHTML = `Incorrect. The correct answer was: <strong>${displayCorrectAnswer}</strong>
+                                         <span class="explainer-text">${currentExplainer}</span>`;
+                feedbackDiv.className = "feedback-box incorrect";
+            }
+
+            if (answerHistory.length > 10) {
+                answerHistory.shift();
+            }
+
+            updateScoreboard();
+
+            document.getElementById("submit-btn").disabled = true;
+            document.getElementById("next-btn").disabled = false;
+        }
+
+        function loadNewQuestion() {
+            let feedbackDiv = document.getElementById("feedback");
+            feedbackDiv.textContent = "";
+            
+            document.getElementById("submit-btn").disabled = false;
+            document.getElementById("next-btn").disabled = true;
+
+            let newQ = generateQuestion();
+            document.getElementById("question").textContent = newQ.q;
+            
+            currentQuestionType = newQ.type;
+            currentExplainer = newQ.explainer;
+
+            let inputArea = document.getElementById("input-area");
+            let mcqArea = document.getElementById("mcq-area");
+
+            if (currentQuestionType === 'math') {
+                mcqArea.style.display = "none";
+                inputArea.style.display = "block";
+                
+                currentAnswer = newQ.a;
+                
+                let inputField = document.getElementById("user-answer");
+                inputField.value = "";
+                inputField.disabled = false;
+                inputField.focus();
+
+            } else if (currentQuestionType === 'mcq') {
+                inputArea.style.display = "none";
+                mcqArea.style.display = "block";
+                
+                let mappedOptions = newQ.options.map((text, index) => {
+                    return { text: text, isCorrect: index === newQ.a };
+                });
+                
+                currentCorrectMcqText = mappedOptions[newQ.a].text;
+                shuffleArray(mappedOptions);
+
+                let mcqHTML = "";
+                mappedOptions.forEach((opt) => {
+                    mcqHTML += `
+                        <label class="mcq-label">
+                            <input type="radio" name="mcq" value="${opt.isCorrect}">
+                            ${opt.text}
+                        </label>`;
+                });
+                mcqArea.innerHTML = mcqHTML;
+            }
+        }
+
+        document.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                if (!document.getElementById("submit-btn").disabled) {
+                    event.preventDefault();
+                    checkAnswer();
+                } else if (!document.getElementById("next-btn").disabled) {
+                    event.preventDefault();
+                    loadNewQuestion();
+                }
+            }
+        });
+
+        window.onload = loadNewQuestion;
+    </script>
+</body>
+</html>
