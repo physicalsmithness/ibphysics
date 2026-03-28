@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diffraction & Interference Simulator</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; margin: 0; padding: 10px 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); max-width: 900px; width: 100%; }
+        .canvas-container { background: #111; border-radius: 4px; padding: 10px; margin: 0 auto 15px auto; width: 100%; box-sizing: border-box; }
+        canvas { display: block; width: 100%; }
+        #graphCanvas { height: 280px; border-bottom: 1px solid #333; margin-bottom: 10px; }
+        #screenCanvas { height: 40px; border-radius: 2px; }
+        
+        .screen-controls { display: flex; justify-content: center; gap: 20px; align-items: center; margin-top: 5px; font-size: 12px; color: #ddd; }
+        .screen-controls label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: #fff; font-weight: bold; transition: opacity 0.2s; }
+        #screenLabel { color: #888; font-size: 11px; text-align: center; text-transform: uppercase; letter-spacing: 1px; font-weight: bold; margin-top: 5px; }
+        
+        .controls-wrapper { display: flex; gap: 15px; }
+        .control-column { flex: 1; border: 1px solid #ddd; padding: 12px; border-radius: 6px; background: #fafafa; transition: opacity 0.2s; }
+        .control-column.global { flex: 100%; margin-top: 15px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        h3 { margin-top: 0; font-size: 15px; border-bottom: 2px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
+        .setA-title { border-color: #e74c3c; } .setB-title { border-color: #3498db; }
+        
+        .slider-row { margin-bottom: 8px; }
+        .label-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 500; margin-bottom: 2px;}
+        input[type="range"] { width: 100%; cursor: pointer; margin: 0; }
+        .val-display { font-weight: bold; color: #333; }
+        
+        .legend { display: flex; justify-content: space-between; margin-bottom: 10px; color: #fff; font-size: 13px; background: #222; padding: 8px 12px; border-radius: 4px;}
+        .switches { display: flex; gap: 15px; font-size: 13px; font-weight: bold; flex-wrap: wrap; align-items: center; }
+        .switches label { margin-top: 0; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; transition: opacity 0.2s;}
+        .wl-control { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: normal; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="legend">
+        <span id="legA">━━━ Setting A</span>
+        <span>Intensity (y) vs Angle θ (x)</span>
+        <span id="legB">- - - Setting B</span>
+    </div>
+
+    <div class="canvas-container">
+        <canvas id="graphCanvas" width="860" height="280"></canvas>
+        <div class="screen-controls">
+            <label id="lbl-superpose"><input type="checkbox" id="superpose"> Superpose A&B colours in screen view</label>
+        </div>
+        <canvas id="screenCanvas" width="860" height="40"></canvas>
+        <div id="screenLabel">PROJECTED SCREEN VIEW</div>
+    </div>
+
+    <div class="controls-wrapper">
+        <div class="control-column" id="panel-setA">
+            <h3 class="setA-title">Setting A (Solid Line)</h3>
+            <div class="slider-row">
+                <div class="label-row"><span>Number of Slits (N):</span> <span id="nA-val" class="val-display">2</span></div>
+                <input type="range" id="nA" min="1" max="20" step="1" value="2">
+            </div>
+            <div class="slider-row">
+                <div class="label-row"><span>Slit Width (a):</span> <span id="aA-val" class="val-display">2.0 µm</span></div>
+                <input type="range" id="aA" min="0" max="100" step="0.1" value="2.0">
+            </div>
+            <div class="slider-row">
+                <div class="label-row"><span>Slit Separation (d):</span> <span id="dA-val" class="val-display">6.0 µm</span></div>
+                <input type="range" id="dA" min="0.1" max="300" step="0.1" value="6.0">
+            </div>
+            <div class="slider-row" style="margin-top: 10px;">
+                <div class="label-row">
+                    <span>Wavelength (λ):</span>
+                    <label class="wl-control"><input type="checkbox" id="whiteA"> White Light</label>
+                    <span id="lA-val" class="val-display">650 nm</span>
+                </div>
+                <input type="range" id="lA" min="380" max="750" step="1" value="650">
+            </div>
+        </div>
+
+        <div class="control-column" id="panel-setB">
+            <h3 class="setB-title">Setting B (Dashed Line)</h3>
+            <div class="slider-row">
+                <div class="label-row"><span>Number of Slits (N):</span> <span id="nB-val" class="val-display">5</span></div>
+                <input type="range" id="nB" min="1" max="20" step="1" value="5">
+            </div>
+            <div class="slider-row">
+                <div class="label-row"><span>Slit Width (a):</span> <span id="aB-val" class="val-display">2.0 µm</span></div>
+                <input type="range" id="aB" min="0" max="100" step="0.1" value="2.0">
+            </div>
+            <div class="slider-row">
+                <div class="label-row"><span>Slit Separation (d):</span> <span id="dB-val" class="val-display">6.0 µm</span></div>
+                <input type="range" id="dB" min="0.1" max="300" step="0.1" value="6.0">
+            </div>
+            <div class="slider-row" style="margin-top: 10px;">
+                <div class="label-row">
+                    <span>Wavelength (λ):</span>
+                    <label class="wl-control"><input type="checkbox" id="whiteB"> White Light</label>
+                    <span id="lB-val" class="val-display">450 nm</span>
+                </div>
+                <input type="range" id="lB" min="380" max="750" step="1" value="450">
+            </div>
+        </div>
+    </div>
+
+    <div class="control-column global">
+        <div style="flex: 1; min-width: 150px;">
+            <div class="label-row" style="margin-top:0;"><span>X-Axis Zoom (Log Scale):</span> <span id="zoom-val" class="val-display">1.0x</span></div>
+            <input type="range" id="zoom" min="0" max="1000" step="1" value="333">
+        </div>
+        <div class="switches">
+            <label><input type="checkbox" id="showSetB"> Show Setting B</label>
+            <label><input type="checkbox" id="normalize"> Normalise intensity to 1 for all slit numbers</label>
+            <label><input type="checkbox" id="showEnv" checked> Show single-slit envelopes</label>
+            <label id="lbl-showRGB"><input type="checkbox" id="showRGB"> Overlay RGB components for white light</label>
+            <label><input type="checkbox" id="showDeg"> X-axis in degrees</label>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const screenCanvas = document.getElementById('screenCanvas');
+    const screenCtx = screenCanvas.getContext('2d');
+    const screenLabel = document.getElementById('screenLabel');
+
+    // Dynamic Physics Enforcement: d must be >= a
+    function enforcePhysics(isA, varType) {
+        const aId = isA ? 'aA' : 'aB';
+        const dId = isA ? 'dA' : 'dB';
+        const aSlider = document.getElementById(aId);
+        const dSlider = document.getElementById(dId);
+        let aVal = parseFloat(aSlider.value);
+        let dVal = parseFloat(dSlider.value);
+        
+        if (aVal > dVal) {
+            if (varType === 'a') {
+                dSlider.value = aVal;
+                document.getElementById(dId + '-val').textContent = aVal.toFixed(1) + ' µm';
+            } else {
+                aSlider.value = dVal;
+                document.getElementById(aId + '-val').textContent = dVal.toFixed(1) + ' µm';
+            }
+        }
+    }
+
+    // Standard sliders
+    ['nA', 'lA', 'nB', 'lB'].forEach(id => {
+        const slider = document.getElementById(id);
+        const display = document.getElementById(id + '-val');
+        const unit = id.startsWith('l') ? ' nm' : '';
+        slider.addEventListener('input', () => { 
+            display.textContent = parseFloat(slider.value).toFixed(id.startsWith('l')?0:1) + unit; 
+            draw(); 
+        });
+    });
+
+    // Physics Coupled sliders
+    ['aA', 'dA', 'aB', 'dB'].forEach(id => {
+        const slider = document.getElementById(id);
+        const display = document.getElementById(id + '-val');
+        const isA = id.endsWith('A');
+        const varType = id.charAt(0);
+        slider.addEventListener('input', () => { 
+            display.textContent = parseFloat(slider.value).toFixed(1) + ' µm';
+            enforcePhysics(isA, varType);
+            draw(); 
+        });
+    });
+
+    // Custom Logarithmic Zoom Slider
+    const zoomSlider = document.getElementById('zoom');
+    const zoomDisplay = document.getElementById('zoom-val');
+    zoomSlider.addEventListener('input', () => {
+        let val = Math.pow(10, (zoomSlider.value / 333.333) - 1);
+        zoomDisplay.textContent = val.toFixed(1) + 'x';
+        draw();
+    });
+
+    function getZoom() {
+        return Math.pow(10, (document.getElementById('zoom').value / 333.333) - 1);
+    }
+    
+    // Toggles
+    ['normalize', 'showSetB', 'showEnv', 'showRGB', 'superpose', 'whiteA', 'whiteB', 'showDeg'].forEach(id => {
+        document.getElementById(id).addEventListener('change', draw);
+    });
+
+    function updateUI() {
+        const wA = document.getElementById('whiteA').checked;
+        const wB = document.getElementById('whiteB').checked;
+        const showSetB = document.getElementById('showSetB').checked;
+        const superpose = document.getElementById('superpose').checked;
+
+        // Manage Setting B Panel
+        const panelB = document.getElementById('panel-setB');
+        panelB.style.opacity = showSetB ? "1" : "0.4";
+        panelB.style.pointerEvents = showSetB ? "auto" : "none";
+
+        // Manage Wavelength Sliders
+        document.getElementById('lA').disabled = wA;
+        document.getElementById('lA-val').style.opacity = wA ? "0.3" : "1";
+        document.getElementById('lB').disabled = wB;
+        document.getElementById('lB-val').style.opacity = wB ? "0.3" : "1";
+
+        // Manage Superpose option
+        const lblSuperpose = document.getElementById('lbl-superpose');
+        document.getElementById('superpose').disabled = !showSetB;
+        lblSuperpose.style.opacity = showSetB ? "1" : "0.3";
+        lblSuperpose.style.pointerEvents = showSetB ? "auto" : "none";
+
+        // Manage RGB Overlay option
+        const lblRGB = document.getElementById('lbl-showRGB');
+        const anyWhiteLightActive = wA || (showSetB && wB);
+        document.getElementById('showRGB').disabled = !anyWhiteLightActive;
+        lblRGB.style.opacity = anyWhiteLightActive ? "1" : "0.4";
+
+        // Dynamic Screen Label
+        if (!showSetB) {
+            screenLabel.textContent = "PROJECTED SCREEN VIEW";
+        } else {
+            screenLabel.textContent = superpose ? "PROJECTED SCREEN VIEW (BLENDED/SUPERPOSED)" : "PROJECTED SCREEN VIEW (SPLIT: A TOP, B BOTTOM)";
+        }
+    }
+
+    function wavelengthToRGBData(Wavelength) {
+        let R, G, B;
+        if (Wavelength >= 380 && Wavelength < 440) { R = -(Wavelength - 440) / (440 - 380); G = 0.0; B = 1.0; }
+        else if (Wavelength >= 440 && Wavelength < 490) { R = 0.0; G = (Wavelength - 440) / (490 - 440); B = 1.0; }
+        else if (Wavelength >= 490 && Wavelength < 510) { R = 0.0; G = 1.0; B = -(Wavelength - 510) / (510 - 490); }
+        else if (Wavelength >= 510 && Wavelength < 580) { R = (Wavelength - 510) / (580 - 510); G = 1.0; B = 0.0; }
+        else if (Wavelength >= 580 && Wavelength < 645) { R = 1.0; G = -(Wavelength - 645) / (645 - 580); B = 0.0; }
+        else if (Wavelength >= 645 && Wavelength <= 780) { R = 1.0; G = 0.0; B = 0.0; }
+        else { R = 0.0; G = 0.0; B = 0.0; }
+        
+        let intensity = 1.0;
+        if (Wavelength > 700) intensity = 0.3 + 0.7 * (780 - Wavelength) / (780 - 700);
+        else if (Wavelength < 420) intensity = 0.3 + 0.7 * (Wavelength - 380) / (420 - 380);
+        
+        return { r: R * 255 * intensity, g: G * 255 * intensity, b: B * 255 * intensity };
+    }
+
+    function calcWaveData(theta, N, a_um, d_um, lambda_nm) {
+        const lambda_um = lambda_nm / 1000;
+        const beta = (Math.PI * a_um * Math.sin(theta)) / lambda_um;
+        const alpha = (Math.PI * d_um * Math.sin(theta)) / lambda_um;
+
+        let diffTerm = 1.0; 
+        if (Math.abs(beta) > 1e-7) diffTerm = Math.pow(Math.sin(beta) / beta, 2);
+
+        let intTerm = N * N; 
+        const sinAlpha = Math.sin(alpha);
+        if (Math.abs(sinAlpha) > 1e-7) intTerm = Math.pow(Math.sin(N * alpha) / sinAlpha, 2);
+
+        return { intensity: diffTerm * intTerm, envelope: diffTerm };
+    }
+
+    function getGraphPoint(theta, N, a, d, isWhite, lambda) {
+        if (!isWhite) return calcWaveData(theta, N, a, d, lambda);
+        
+        let totalI = 0, totalE = 0, count = 0;
+        for(let w = 400; w <= 700; w += 5) {
+            let data = calcWaveData(theta, N, a, d, w);
+            totalI += data.intensity; totalE += data.envelope;
+            count++;
+        }
+        return { intensity: totalI / count, envelope: totalE / count };
+    }
+
+    function drawComponentPath(ctx, N, a, d, lambda, colorStr, thetaMax, normalize, maxGlobalY, isDashed, xAxisY, drawHeight) {
+        ctx.beginPath();
+        ctx.strokeStyle = colorStr;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash(isDashed ? [4, 6] : []);
+        for (let px = 0; px <= canvas.width; px++) {
+            let theta = -thetaMax + (px / canvas.width) * (2 * thetaMax);
+            let I = calcWaveData(theta, N, a, d, lambda).intensity;
+            let py = xAxisY - (((normalize ? I/(N*N) : I) / maxGlobalY) * drawHeight);
+            if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+    }
+
+    function getScreenRGB(theta, N, a, d, isWhite, lambda, normalize, maxGlobalY) {
+        if (!isWhite) {
+            let I = calcWaveData(theta, N, a, d, lambda).intensity;
+            let lum = Math.pow((normalize ? I/(N*N) : I) / maxGlobalY, 0.7);
+            let c = wavelengthToRGBData(lambda);
+            return { r: c.r * lum, g: c.g * lum, b: c.b * lum };
+        } else {
+            let r=0, g=0, b=0, count=0;
+            for(let w = 400; w <= 700; w += 5) { 
+                let I = calcWaveData(theta, N, a, d, w).intensity;
+                let lum = Math.pow((normalize ? I/(N*N) : I) / maxGlobalY, 0.7);
+                let c = wavelengthToRGBData(w);
+                r += c.r * lum; g += c.g * lum; b += c.b * lum;
+                count++;
+            }
+            let scale = 1.0 / (count * 0.35); 
+            return { r: Math.min(255, r * scale), g: Math.min(255, g * scale), b: Math.min(255, b * scale) };
+        }
+    }
+
+    function draw() {
+        updateUI();
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const zoom = getZoom();
+        const thetaMax = 0.2 / zoom; 
+        const showDeg = document.getElementById('showDeg').checked;
+
+        // Establish Axis Baselines
+        const xAxisY = canvas.height - 25; 
+        const drawHeight = xAxisY - 35; 
+        
+        ctx.strokeStyle = '#333'; ctx.lineWidth = 1; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, xAxisY); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, xAxisY); ctx.lineTo(canvas.width, xAxisY); ctx.stroke();
+
+        // Draw X-Axis Scale Labels
+        ctx.font = '11px sans-serif';
+        ctx.fillStyle = '#666';
+        ctx.textBaseline = 'top';
+        let maxAngleStr = showDeg ? (thetaMax * 180 / Math.PI).toFixed(1) + '°' : thetaMax.toFixed(3) + ' rad';
+        ctx.textAlign = 'left';
+        ctx.fillText('-' + maxAngleStr, 5, xAxisY + 6);
+        ctx.textAlign = 'right';
+        ctx.fillText('+' + maxAngleStr, canvas.width - 5, xAxisY + 6);
+        ctx.textAlign = 'center';
+        ctx.fillText('θ = 0', canvas.width / 2, xAxisY + 6);
+        ctx.textBaseline = 'alphabetic'; 
+
+        const NA = parseFloat(document.getElementById('nA').value); const aA = parseFloat(document.getElementById('aA').value);
+        const dA = parseFloat(document.getElementById('dA').value); const lA = parseFloat(document.getElementById('lA').value);
+        const wA = document.getElementById('whiteA').checked;
+        
+        const NB = parseFloat(document.getElementById('nB').value); const aB = parseFloat(document.getElementById('aB').value);
+        const dB = parseFloat(document.getElementById('dB').value); const lB = parseFloat(document.getElementById('lB').value);
+        const wB = document.getElementById('whiteB').checked;
+
+        const normalize = document.getElementById('normalize').checked;
+        const showSetB = document.getElementById('showSetB').checked;
+        const showEnv = document.getElementById('showEnv').checked;
+        const showRGB = document.getElementById('showRGB').checked;
+        const superpose = document.getElementById('superpose').checked;
+
+        let baseCA = wA ? {r:255,g:255,b:255} : wavelengthToRGBData(lA);
+        let baseCB = wB ? {r:255,g:255,b:255} : wavelengthToRGBData(lB);
+        let cssA = `rgb(${baseCA.r},${baseCA.g},${baseCA.b})`;
+        let cssB = `rgb(${baseCB.r},${baseCB.g},${baseCB.b})`;
+        document.getElementById('legA').style.color = cssA;
+        document.getElementById('legB').style.color = showSetB ? cssB : "#666";
+
+        let maxGlobalY = normalize ? 1.0 : (showSetB ? Math.max(NA*NA, NB*NB) : NA*NA);
+
+        const screenImgData = screenCtx.createImageData(screenCanvas.width, screenCanvas.height);
+        const pathA = new Path2D(); const envPathA = new Path2D();
+        const pathB = new Path2D(); const envPathB = new Path2D();
+
+        for (let px = 0; px < canvas.width; px++) {
+            let theta = -thetaMax + (px / canvas.width) * (2 * thetaMax);
+            
+            // Graph A
+            let d1 = getGraphPoint(theta, NA, aA, dA, wA, lA);
+            let E1 = !normalize ? d1.envelope * (NA*NA) : d1.envelope;
+            let pyA = xAxisY - (((normalize ? d1.intensity/(NA*NA) : d1.intensity) / maxGlobalY) * drawHeight);
+            let peA = xAxisY - ((E1 / maxGlobalY) * drawHeight);
+            if (px === 0) { pathA.moveTo(px, pyA); envPathA.moveTo(px, peA); } else { pathA.lineTo(px, pyA); envPathA.lineTo(px, peA); }
+
+            // Graph B
+            if (showSetB) {
+                let d2 = getGraphPoint(theta, NB, aB, dB, wB, lB);
+                let E2 = !normalize ? d2.envelope * (NB*NB) : d2.envelope;
+                let pyB = xAxisY - (((normalize ? d2.intensity/(NB*NB) : d2.intensity) / maxGlobalY) * drawHeight);
+                let peB = xAxisY - ((E2 / maxGlobalY) * drawHeight);
+                if (px === 0) { pathB.moveTo(px, pyB); envPathB.moveTo(px, peB); } else { pathB.lineTo(px, pyB); envPathB.lineTo(px, peB); }
+            }
+
+            // Screen Mapping
+            let rgbA = getScreenRGB(theta, NA, aA, dA, wA, lA, normalize, maxGlobalY);
+            let rgbB = showSetB ? getScreenRGB(theta, NB, aB, dB, wB, lB, normalize, maxGlobalY) : {r:0,g:0,b:0};
+
+            for(let y = 0; y < screenCanvas.height; y++) {
+                let idx = (y * screenCanvas.width + px) * 4;
+                if (showSetB && !superpose) {
+                    if (y < screenCanvas.height / 2) {
+                        screenImgData.data[idx] = rgbA.r; screenImgData.data[idx+1] = rgbA.g; screenImgData.data[idx+2] = rgbA.b; screenImgData.data[idx+3] = 255;
+                    } else {
+                        screenImgData.data[idx] = rgbB.r; screenImgData.data[idx+1] = rgbB.g; screenImgData.data[idx+2] = rgbB.b; screenImgData.data[idx+3] = 255;
+                    }
+                } else {
+                    screenImgData.data[idx] = Math.min(255, rgbA.r + rgbB.r);
+                    screenImgData.data[idx+1] = Math.min(255, rgbA.g + rgbB.g);
+                    screenImgData.data[idx+2] = Math.min(255, rgbA.b + rgbB.b);
+                    screenImgData.data[idx+3] = 255;
+                }
+            }
+        }
+
+        if (showSetB) {
+            if (showEnv) {
+                ctx.strokeStyle = `rgba(${baseCB.r},${baseCB.g},${baseCB.b}, 0.5)`;
+                ctx.setLineDash([2, 5]); ctx.lineWidth = 2; ctx.stroke(envPathB);
+            }
+            if (wB && showRGB) {
+                drawComponentPath(ctx, NB, aB, dB, 650, 'rgba(255,50,50,0.6)', thetaMax, normalize, maxGlobalY, true, xAxisY, drawHeight); 
+                drawComponentPath(ctx, NB, aB, dB, 530, 'rgba(50,255,50,0.6)', thetaMax, normalize, maxGlobalY, true, xAxisY, drawHeight); 
+                drawComponentPath(ctx, NB, aB, dB, 450, 'rgba(50,150,255,0.6)', thetaMax, normalize, maxGlobalY, true, xAxisY, drawHeight); 
+            }
+            ctx.strokeStyle = cssB; ctx.setLineDash([24, 5]); ctx.lineWidth = 2.5; ctx.stroke(pathB);
+        }
+
+        if (showEnv) {
+            ctx.strokeStyle = `rgba(${baseCA.r},${baseCA.g},${baseCA.b}, 0.5)`;
+            ctx.setLineDash([2, 5]); ctx.lineWidth = 2; ctx.stroke(envPathA);
+        }
+        if (wA && showRGB) {
+            drawComponentPath(ctx, NA, aA, dA, 650, 'rgba(255,50,50,0.8)', thetaMax, normalize, maxGlobalY, false, xAxisY, drawHeight); 
+            drawComponentPath(ctx, NA, aA, dA, 530, 'rgba(50,255,50,0.8)', thetaMax, normalize, maxGlobalY, false, xAxisY, drawHeight); 
+            drawComponentPath(ctx, NA, aA, dA, 450, 'rgba(50,150,255,0.8)', thetaMax, normalize, maxGlobalY, false, xAxisY, drawHeight); 
+        }
+
+        ctx.strokeStyle = cssA; ctx.setLineDash([]); ctx.lineWidth = 2.5; ctx.stroke(pathA); 
+        
+        const fillPathA = new Path2D(pathA);
+        fillPathA.lineTo(canvas.width, xAxisY); 
+        fillPathA.lineTo(0, xAxisY);
+        fillPathA.closePath();
+        ctx.fillStyle = `rgba(${baseCA.r},${baseCA.g},${baseCA.b}, 0.15)`;
+        ctx.fill(fillPathA);
+
+        // Draw Peak Intensity Labels if not normalized
+        if (!normalize) {
+            ctx.font = 'bold 13px sans-serif';
+            ctx.textAlign = 'center';
+            const midX = canvas.width / 2;
+            
+            let peakA_val = NA * NA;
+            let yA = xAxisY - ((peakA_val / maxGlobalY) * drawHeight);
+            
+            if (showSetB) {
+                let peakB_val = NB * NB;
+                let yB = xAxisY - ((peakB_val / maxGlobalY) * drawHeight);
+                
+                if (peakA_val === peakB_val) {
+                    ctx.fillStyle = cssA; ctx.fillText(`I = ${peakA_val}`, midX - 35, yA - 10);
+                    ctx.fillStyle = cssB; ctx.fillText(`I = ${peakB_val}`, midX + 35, yB - 10);
+                } else {
+                    ctx.fillStyle = cssA; ctx.fillText(`I = ${peakA_val}`, midX, yA - 10);
+                    ctx.fillStyle = cssB; ctx.fillText(`I = ${peakB_val}`, midX, yB - 10);
+                }
+            } else {
+                ctx.fillStyle = cssA; ctx.fillText(`I = ${peakA_val}`, midX, yA - 10);
+            }
+        }
+
+        screenCtx.putImageData(screenImgData, 0, 0);
+    }
+    
+    draw();
+</script>
+</body>
+</html>
