@@ -132,6 +132,10 @@
     const screenCtx = screenCanvas.getContext('2d');
     const screenLabel = document.getElementById('screenLabel');
 
+    const EPS_THETA = 1e-4;
+    const GRAPH_SUBSAMPLES = 31;
+    const SCREEN_SUBSAMPLES = 7;
+
     // Dynamic Physics Enforcement: d must be >= a
     function enforcePhysics(isA, varType) {
         const aId = isA ? 'aA' : 'aB';
@@ -275,14 +279,43 @@
         return { intensity: totalI / count, envelope: totalE / count };
     }
 
+    function sampleColumnMax(thetaLeft, thetaRight, N, a, d, isWhite, lambda, samples = GRAPH_SUBSAMPLES) {
+        let maxI = -Infinity;
+        let maxE = -Infinity;
+
+        for (let s = 0; s < samples; s++) {
+            const f = (s + 0.5) / samples;
+            const theta = thetaLeft + f * (thetaRight - thetaLeft);
+            const data = getGraphPoint(theta, N, a, d, isWhite, lambda);
+            if (data.intensity > maxI) maxI = data.intensity;
+            if (data.envelope > maxE) maxE = data.envelope;
+        }
+
+        return { intensity: maxI, envelope: maxE };
+    }
+
+    function sampleColumnMaxMono(thetaLeft, thetaRight, N, a, d, lambda, samples = GRAPH_SUBSAMPLES) {
+        let maxI = -Infinity;
+
+        for (let s = 0; s < samples; s++) {
+            const f = (s + 0.5) / samples;
+            const theta = thetaLeft + f * (thetaRight - thetaLeft);
+            const I = calcWaveData(theta, N, a, d, lambda).intensity;
+            if (I > maxI) maxI = I;
+        }
+
+        return maxI;
+    }
+
     function drawComponentPath(ctx, N, a, d, lambda, colorStr, thetaMax, normalize, maxGlobalY, isDashed, xAxisY, drawHeight) {
         ctx.beginPath();
         ctx.strokeStyle = colorStr;
         ctx.lineWidth = 1.5;
         ctx.setLineDash(isDashed ? [4, 6] : []);
         for (let px = 0; px <= canvas.width; px++) {
-            let theta = -thetaMax + (px / canvas.width) * (2 * thetaMax);
-            let I = calcWaveData(theta, N, a, d, lambda).intensity;
+            let thetaLeft = -thetaMax + (Math.max(0, px - 0.5) / canvas.width) * (2 * thetaMax);
+            let thetaRight = -thetaMax + (Math.min(canvas.width, px + 0.5) / canvas.width) * (2 * thetaMax);
+            let I = sampleColumnMaxMono(thetaLeft, thetaRight, N, a, d, lambda);
             let py = xAxisY - (((normalize ? I/(N*N) : I) / maxGlobalY) * drawHeight);
             if (px === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
         }
@@ -309,13 +342,28 @@
         }
     }
 
+    function getScreenRGBRange(thetaLeft, thetaRight, N, a, d, isWhite, lambda, normalize, maxGlobalY, samples = SCREEN_SUBSAMPLES) {
+        let r = 0, g = 0, b = 0;
+
+        for (let s = 0; s < samples; s++) {
+            const f = (s + 0.5) / samples;
+            const theta = thetaLeft + f * (thetaRight - thetaLeft);
+            const rgb = getScreenRGB(theta, N, a, d, isWhite, lambda, normalize, maxGlobalY);
+            r += rgb.r;
+            g += rgb.g;
+            b += rgb.b;
+        }
+
+        return { r: r / samples, g: g / samples, b: b / samples };
+    }
+
     function draw() {
         updateUI();
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
         const zoom = getZoom();
-        const thetaMax = 0.2 / zoom; 
+        const thetaMax = Math.min(0.2 / zoom, Math.PI / 2 - EPS_THETA); 
         const showDeg = document.getElementById('showDeg').checked;
 
         // Establish Axis Baselines
@@ -367,10 +415,11 @@
         const pathB = new Path2D(); const envPathB = new Path2D();
 
         for (let px = 0; px < canvas.width; px++) {
-            let theta = -thetaMax + (px / canvas.width) * (2 * thetaMax);
+            let thetaLeft = -thetaMax + (px / canvas.width) * (2 * thetaMax);
+            let thetaRight = -thetaMax + ((px + 1) / canvas.width) * (2 * thetaMax);
             
             // Graph A
-            let d1 = getGraphPoint(theta, NA, aA, dA, wA, lA);
+            let d1 = sampleColumnMax(thetaLeft, thetaRight, NA, aA, dA, wA, lA);
             let E1 = !normalize ? d1.envelope * (NA*NA) : d1.envelope;
             let pyA = xAxisY - (((normalize ? d1.intensity/(NA*NA) : d1.intensity) / maxGlobalY) * drawHeight);
             let peA = xAxisY - ((E1 / maxGlobalY) * drawHeight);
@@ -378,7 +427,7 @@
 
             // Graph B
             if (showSetB) {
-                let d2 = getGraphPoint(theta, NB, aB, dB, wB, lB);
+                let d2 = sampleColumnMax(thetaLeft, thetaRight, NB, aB, dB, wB, lB);
                 let E2 = !normalize ? d2.envelope * (NB*NB) : d2.envelope;
                 let pyB = xAxisY - (((normalize ? d2.intensity/(NB*NB) : d2.intensity) / maxGlobalY) * drawHeight);
                 let peB = xAxisY - ((E2 / maxGlobalY) * drawHeight);
@@ -386,8 +435,8 @@
             }
 
             // Screen Mapping
-            let rgbA = getScreenRGB(theta, NA, aA, dA, wA, lA, normalize, maxGlobalY);
-            let rgbB = showSetB ? getScreenRGB(theta, NB, aB, dB, wB, lB, normalize, maxGlobalY) : {r:0,g:0,b:0};
+            let rgbA = getScreenRGBRange(thetaLeft, thetaRight, NA, aA, dA, wA, lA, normalize, maxGlobalY);
+            let rgbB = showSetB ? getScreenRGBRange(thetaLeft, thetaRight, NB, aB, dB, wB, lB, normalize, maxGlobalY) : {r:0,g:0,b:0};
 
             for(let y = 0; y < screenCanvas.height; y++) {
                 let idx = (y * screenCanvas.width + px) * 4;
