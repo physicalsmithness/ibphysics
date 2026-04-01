@@ -1,0 +1,2428 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Radiative Equilibrium Skill Builder</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121a30;
+      --panel-2: #1a2542;
+      --text: #eef3ff;
+      --muted: #aab7d6;
+      --accent: #7cc4ff;
+      --accent-2: #a9ffcb;
+      --danger: #ff9b9b;
+      --warning: #ffd88a;
+      --ok: #58d68d;
+      --border: rgba(255,255,255,0.09);
+      --shadow: 0 18px 40px rgba(0,0,0,0.28);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #16203d, #0b1020 58%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 22px;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .sidebar, .main-panel, .card {
+      background: rgba(18,26,48,0.94);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(8px);
+    }
+
+    .sidebar {
+      border-radius: 22px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+    }
+
+    .main-panel {
+      border-radius: 22px;
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    h1, h2, h3, h4, p { margin: 0; }
+    .small { font-size: 0.9rem; color: var(--muted); }
+    .muted { color: var(--muted); }
+    .tiny { font-size: 0.82rem; color: var(--muted); }
+
+    .headline {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .headline h1 { font-size: 1.45rem; }
+
+    .pill-row, .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(124,196,255,0.12);
+      color: var(--accent);
+      border: 1px solid rgba(124,196,255,0.18);
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+    }
+
+    .overview-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap: 12px;
+    }
+
+    .stat-box {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .stat-value {
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .level-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .level-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 12px;
+      display: grid;
+      gap: 8px;
+      cursor: pointer;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .level-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(124,196,255,0.35);
+    }
+
+    .level-card.active {
+      border-color: rgba(124,196,255,0.55);
+      background: linear-gradient(180deg, rgba(124,196,255,0.14), rgba(169,255,203,0.06));
+    }
+
+    .level-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .level-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+
+    .level-score {
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+
+    .recent-row {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      min-height: 22px;
+    }
+
+    .recent-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      background: rgba(255,255,255,0.04);
+      color: var(--muted);
+    }
+
+    .recent-dot.ok {
+      background: rgba(88,214,141,0.24);
+      color: #eafff2;
+      border-color: rgba(88,214,141,0.62);
+      box-shadow: 0 0 0 2px rgba(88,214,141,0.16);
+      font-weight: 800;
+    }
+
+    .recent-dot.bad {
+      background: rgba(255,155,155,0.16);
+      color: #ffe4e4;
+      border-color: rgba(255,155,155,0.34);
+      font-weight: 800;
+    }
+
+    .recent-dot.shown,
+    .recent-dot.skipped {
+      background: transparent;
+      border-style: dashed;
+      color: var(--muted);
+    }
+
+    .section-card {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .error-grid {
+      display: grid;
+      gap: 8px;
+    }
+
+    .error-row {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px;
+      align-items: center;
+      font-size: 0.9rem;
+    }
+
+    .error-row.active {
+      color: var(--text);
+    }
+
+    .error-row.active .error-tag {
+      background: rgba(124,196,255,0.16);
+      border-color: rgba(124,196,255,0.34);
+      color: #d9efff;
+    }
+
+    .error-tag {
+      background: rgba(255,216,138,0.11);
+      border: 1px solid rgba(255,216,138,0.2);
+      color: var(--warning);
+      padding: 5px 9px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      min-width: 32px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .topbar h2 {
+      font-size: 1.55rem;
+      margin-bottom: 6px;
+    }
+
+    .card {
+      border-radius: 20px;
+      padding: 18px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .question-stem {
+      font-size: 1.12rem;
+      line-height: 1.6;
+    }
+
+    .formula-box {
+      background: rgba(11,16,32,0.48);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      line-height: 1.7;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 0.97rem;
+      overflow-x: auto;
+      color: #e9f4ff;
+    }
+
+    .formula-box p + p { margin-top: 8px; }
+
+    .equilibrium-line {
+      display: inline-flex;
+      width: fit-content;
+      background: rgba(169,255,203,0.12);
+      color: var(--accent-2);
+      border: 1px solid rgba(169,255,203,0.22);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .hint-stack,
+    .worked-stack,
+    .welcome-stack {
+      display: grid;
+      gap: 10px;
+    }
+
+    .welcome-card {
+      background: linear-gradient(180deg, rgba(124,196,255,0.12), rgba(169,255,203,0.06));
+      border: 1px solid rgba(124,196,255,0.2);
+      border-radius: 18px;
+      padding: 14px 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .diagram-card {
+      background: rgba(11,16,32,0.34);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .diagram-wrap svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .diagram-caption {
+      color: var(--muted);
+      font-size: 0.87rem;
+      line-height: 1.55;
+    }
+
+    .basic-maths details,
+    details.basic-maths {
+      background: rgba(255,255,255,0.03);
+    }
+
+    .math-list {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .math-list li + li { margin-top: 6px; }
+
+    .reference-stack {
+      display: grid;
+      gap: 6px;
+    }
+
+    .reference-line strong {
+      color: var(--accent-2);
+    }
+
+    .question-stem strong {
+      color: var(--accent-2);
+    }
+
+    .answer-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    input[type="text"] {
+      width: min(320px, 100%);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px 14px;
+      font-size: 1rem;
+      outline: none;
+    }
+
+    input[type="text"]:focus {
+      border-color: rgba(124,196,255,0.45);
+      box-shadow: 0 0 0 4px rgba(124,196,255,0.12);
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 11px 14px;
+      font-size: 0.95rem;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform 0.14s ease, opacity 0.14s ease, background 0.14s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+
+    .primary { background: linear-gradient(135deg, #7cc4ff, #9fd4ff); color: #07111f; }
+    .secondary { background: rgba(255,255,255,0.08); color: var(--text); border: 1px solid rgba(255,255,255,0.12); }
+    .ghost { background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,0.12); }
+    .danger-btn { background: rgba(255,155,155,0.13); color: #ffd1d1; border: 1px solid rgba(255,155,155,0.22); }
+
+    .feedback {
+      border-radius: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      line-height: 1.6;
+    }
+
+    .feedback.ok {
+      background: linear-gradient(180deg, rgba(88,214,141,0.2), rgba(88,214,141,0.1));
+      border-color: rgba(88,214,141,0.45);
+      box-shadow: 0 0 0 1px rgba(88,214,141,0.12) inset;
+    }
+
+    .feedback.bad {
+      background: linear-gradient(180deg, rgba(255,155,155,0.14), rgba(255,155,155,0.08));
+      border-color: rgba(255,155,155,0.26);
+    }
+
+    .feedback-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .feedback-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 0.88rem;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+    }
+
+    .feedback-badge.success {
+      background: rgba(88,214,141,0.24);
+      border: 1px solid rgba(88,214,141,0.46);
+      color: #effff5;
+    }
+
+    .feedback-badge.retry {
+      background: rgba(255,216,138,0.14);
+      border: 1px solid rgba(255,216,138,0.24);
+      color: #ffe8ba;
+    }
+
+    .mini-budget {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      background: rgba(11,16,32,0.42);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    .mini-budget-title {
+      font-size: 0.84rem;
+      color: var(--muted);
+    }
+
+    .mini-budget-row {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr auto 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .mini-budget-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+
+    .mini-budget-label {
+      display: block;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .mini-budget-value {
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .mini-budget-arrow {
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+    }
+
+    .mini-budget-note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .hidden { display: none !important; }
+
+    details {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+      line-height: 1.65;
+    }
+
+    .splash-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .highlight {
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+
+    .badge {
+      display: inline-flex;
+      width: fit-content;
+      background: rgba(169,255,203,0.14);
+      color: var(--accent-2);
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-size: 0.84rem;
+      border: 1px solid rgba(169,255,203,0.24);
+    }
+
+    
+    .simple-diagram-card {
+      gap: 12px;
+    }
+
+    .simple-diagram-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .simple-diagram-box {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+
+    .diagram-math {
+      white-space: nowrap;
+    }
+.footer-note {
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+        @media (max-width: 900px) {
+      .simple-diagram-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+@media (max-width: 1100px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        position: static;
+        max-height: none;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .overview-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .answer-row {
+        align-items: stretch;
+      }
+
+      button, input[type="text"] {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="headline">
+        <h1>Radiative Equilibrium Skill Builder</h1>
+        <p class="small">Ten levels to help you get used to the different radiative-equilibrium question types, with progress tracking by level.</p>
+      </div>
+
+      <div class="overview-grid">
+        <div class="stat-box">
+          <div class="tiny">Overall</div>
+          <div class="stat-value" id="overallScore">0/0</div>
+          <div class="tiny" id="overallPercent">0%</div>
+        </div>
+        <div class="stat-box">
+          <div class="tiny">Current level</div>
+          <div class="stat-value" id="currentLevelMini">1</div>
+          <div class="tiny" id="currentLevelNameMini">Sphere at 1 AU</div>
+        </div>
+        <div class="stat-box">
+          <div class="tiny">Recent streak</div>
+          <div class="stat-value" id="recentStreak">0</div>
+          <div class="tiny">consecutive correct</div>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="level-top">
+          <h3>Level progress</h3>
+          <span class="tiny">Click any level</span>
+        </div>
+        <div id="levelList" class="level-list"></div>
+      </div>
+
+      <div class="section-card">
+        <div class="level-top">
+          <h3>Error analysis</h3>
+          <span class="tiny">Detected so far</span>
+        </div>
+        <div class="error-grid" id="errorGrid"></div>
+      </div>
+
+      <div class="section-card">
+        <h3>Reference</h3>
+        <div class="formula-box reference-stack">
+          <div class="reference-line"><strong>σ</strong> = 5.67 × 10<sup>−8</sup> W m<sup>−2</sup> K<sup>−4</sup></div>
+          <div class="reference-line"><strong>S₀</strong> = 1361 W m<sup>−2</sup></div>
+          <div class="reference-line"><strong>At equilibrium, power in = power out</strong></div>
+        </div>
+        <div class="tiny">Use kelvin inside any T⁴ calculation. Convert to °C only at the end if needed.</div>
+      </div>
+
+      <div class="controls">
+        <button class="danger-btn" id="resetBtn">Reset progress</button>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <div class="topbar">
+        <div>
+          <div class="badge" id="levelBadge">Level 1</div>
+          <h2 id="levelTitle">Spherical object at Earth’s distance</h2>
+          <p class="small" id="levelSubtitle">Absorbing sunlight over a disc, emitting over a full sphere.</p>
+        </div>
+        <div class="controls">
+          <button class="ghost" id="prevBtn">Previous level</button>
+          <button class="ghost" id="replayBtn">Replay splash</button>
+          <button class="ghost" id="nextBtn">Next level</button>
+        </div>
+      </div>
+
+      <section class="card" id="splashCard"></section>
+
+      <section class="card hidden" id="questionCard">
+        <div class="pill-row" id="questionMeta"></div>
+        <div class="question-stem" id="questionStem"></div>
+        <div class="formula-box" id="questionHintBox"></div>
+        <div class="answer-row">
+          <input id="answerInput" type="text" inputmode="decimal" placeholder="Enter your numerical answer" />
+          <button class="primary" id="submitBtn">Check answer</button>
+          <button class="secondary" id="newQuestionBtn">Try another question</button>
+          <button class="secondary" id="showSolutionBtn">Show worked solution</button>
+        </div>
+        <div class="tiny">Enter just the number. The question will tell you whether the answer is in K or °C. Have a go, then move on whenever you feel ready.</div>
+        <div id="feedbackBox" class="feedback hidden"></div>
+        <details id="solutionDetails" class="hidden">
+          <summary>Worked solution</summary>
+          <div id="solutionBody" style="margin-top:12px; line-height:1.7;"></div>
+        </details>
+      </section>
+
+      <div class="footer-note">
+        This builder keeps to radiative-equilibrium questions. Treat objects as blackbodies unless a stated budget tells you otherwise, and ignore conduction and convection unless the question explicitly builds them into the energy budget.
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const SIGMA = 5.67e-8;
+    const SOLAR = 1361;
+    const STORAGE_KEY = 'radiative-equilibrium-skill-builder-v9-2b';
+
+    const ERROR_CATALOG = [
+      { code: 'geometry_sphere', label: 'Missed sphere geometry', help: 'A sphere absorbs over πr² but emits over 4πr².' },
+      { code: 'invented_albedo', label: 'Added albedo when none was stated', help: 'Only use albedo if the question gives one.' },
+      { code: 'albedo_omitted', label: 'Did not subtract albedo', help: 'Use absorbed fraction (1 − a), not the full solar input.' },
+      { code: 'albedo_used_instead', label: 'Used a instead of (1 − a)', help: 'Albedo is the reflected fraction, not the absorbed fraction.' },
+      { code: 'emissivity_omitted', label: 'Ignored emissivity', help: 'If emissivity ε is given, the thermal term is εσT⁴, not just σT⁴.' },
+      { code: 'emissivity_wrong_way', label: 'Used emissivity on the wrong side', help: 'Emissivity multiplies the emitted term, so solving for T means dividing by ε, not multiplying by it.' },
+      { code: 'distance_wrong_power', label: 'Used distance wrongly', help: 'Solar flux scales as 1/d², not 1/d.' },
+      { code: 'earth_distance_assumed', label: 'Treated it as 1 AU', help: 'Once distance changes, the solar flux changes too.' },
+      { code: 'back_radiation_omitted', label: 'Missed a radiation input term', help: 'In a budget, add all incoming flux terms before solving.' },
+      { code: 'divided_by_4_again', label: 'Divided an average flux by 4 again', help: 'If the question already gives W m⁻² averaged over the surface, do not apply another /4.' },
+      { code: 'flat_faces_wrong', label: 'Wrong number of emitting faces', help: 'Flat objects may radiate from one face or both: read carefully.' },
+      { code: 'tilt_omitted', label: 'Forgot the cosθ factor', help: 'Tilt reduces intercepted sunlight by cosθ.' },
+      { code: 'internal_area_wrong', label: 'Wrong emitting area', help: 'Internal-power questions depend entirely on the emitting area.' },
+      { code: 'ambient_omitted', label: 'Ignored the room/background temperature', help: 'In a warm environment, use T⁴ − T_room⁴ or add the background term.' },
+      { code: 'ambient_kelvin_error', label: 'Used room temperature in °C inside T⁴', help: 'Convert the surroundings to kelvin before raising to the fourth power.' },
+      { code: 'unit_not_converted_to_c', label: 'Did not convert to °C', help: 'Find T in kelvin first, then subtract 273.15 if °C is required.' },
+      { code: 'unit_not_converted_to_k', label: 'Gave °C when K was required', help: 'Stefan–Boltzmann naturally gives kelvin.' },
+      { code: 'rounding', label: 'A rounding/precision issue', help: 'Your method looks close. Check the requested precision.' },
+      { code: 'generic', label: 'Other or mixed error', help: 'Recheck the setup, units, and fourth-root step.' }
+    ];
+
+    const LEVELS = [
+      {
+        id: 1,
+        title: 'Spherical object at Earth’s distance',
+        short: 'Sphere at 1 AU',
+        subtitle: 'Absorbing sunlight over a disc, emitting over a full sphere.',
+        splash: [
+          'This is the foundation model: a spherical black object at Earth’s distance from the Sun.',
+          'The key idea is geometry: sunlight is intercepted over a cross-sectional area πr², but thermal emission leaves over 4πr².',
+          'So the average absorbed solar flux is one quarter of the solar constant.'
+        ],
+        extra: 'No albedo yet, no atmosphere, and always use radiative equilibrium.',
+        generator: generateLevel1
+      },
+      {
+        id: 2,
+        mini: '2a',
+        badge: 'Level 2a',
+        title: 'Include albedo',
+        short: '2a: add albedo',
+        subtitle: 'Keep the same sphere geometry, but now only the absorbed fraction of sunlight heats the object.',
+        splash: [
+          'Now the object may reflect some sunlight.',
+          'Albedo tells you the reflected fraction, so the heating part is (1 − a).',
+          'Many questions stop here and effectively take emissivity to be 1, so it is worth getting this stage completely steady on its own.'
+        ],
+        extra: 'Still a sphere at 1 AU, still no atmosphere, and still no separate emissivity term in the model at this stage.',
+        generator: generateLevel2
+      },
+      {
+        id: 3,
+        mini: '2b',
+        badge: 'Level 2b',
+        title: 'Add emissivity',
+        short: '2b: albedo + ε',
+        subtitle: 'Now keep albedo on the input side and put emissivity on the emitted side.',
+        splash: [
+          'This is the natural follow-on once ordinary albedo questions feel settled.',
+          'Albedo changes the absorbed sunlight through (1 − a), while emissivity ε changes the thermal-emission term.',
+          'So this level is about keeping those two roles separate and using both cleanly in the same balance.'
+        ],
+        extra: 'This level still keeps the basic sphere-at-1-AU setup, but now some questions include ε ≠ 1.',
+        generator: generateLevel3Emissivity
+      },
+      {
+        id: 4,
+        title: 'Distance and named worlds',
+        short: 'Distance and worlds',
+        subtitle: 'Use distance, and sometimes a named body, to set the solar input correctly.',
+        splash: [
+          'Now the object can sit anywhere in the Solar System, and sometimes it will be a named world.',
+          'Solar flux scales as 1/d² when distance d is measured in AU relative to Earth.',
+          'Some questions also include albedo, and later ones may include emissivity too.'
+        ],
+        extra: 'This level mixes generic distance questions with named worlds, but the underlying model is the same.',
+        generator: generateLevel3Merged
+      },
+      {
+        id: 5,
+        title: 'Star luminosity and distance',
+        short: 'Luminosity to intensity',
+        subtitle: 'Find the intensity from luminosity and distance before solving the temperature.',
+        splash: [
+          'Now the star is not always just the Sun at 1 AU.',
+          'First turn the star’s luminosity and orbital distance into the intensity at the object.',
+          'Then use the usual radiative-equilibrium model with that intensity.'
+        ],
+        extra: 'This is the same equilibrium idea as before, but with one extra setup step first.',
+        generator: generateLevel4Star
+      },
+      {
+        id: 6,
+        title: 'Other geometries',
+        short: 'Flat geometry',
+        subtitle: 'Absorbing area and emitting area are no longer the sphere pattern.',
+        splash: [
+          'Now the geometry really matters.',
+          'A flat sail, panel, or plate may absorb over one face but emit from one face or both.',
+          'This level is about matching the physical geometry to the energy balance, without tilt yet.'
+        ],
+        extra: 'Read whether the underside radiates, whether the object is face-on, and which area is emitting.',
+        generator: generateLevel5GeometryNoTilt
+      },
+      {
+        id: 7,
+        title: 'Atmosphere and energy budgets',
+        short: 'Budgets',
+        subtitle: 'Add together all incoming flux terms before solving.',
+        splash: [
+          'This level moves from bare-sphere geometry to energy-budget thinking.',
+          'Some questions give solar absorption and atmospheric back-radiation separately. Others give an already-averaged absorbed flux.',
+          'Be careful not to divide by 4 again if the quantity is already a surface-averaged flux in W m⁻².'
+        ],
+        extra: 'Your job is to identify what is already built into the budget and what still needs to be added.',
+        generator: generateLevel4
+      },
+      {
+        id: 8,
+        title: 'Internal power in deep space',
+        short: 'Deep-space power',
+        subtitle: 'No sunlight now: internal power balances thermal emission.',
+        splash: [
+          'In deep space, the dominant heating source may be internal electrical or radioactive power.',
+          'The equilibrium condition is simply internal power = radiated power.',
+          'The main trap is using the wrong emitting area.'
+        ],
+        extra: 'Some objects radiate from all surfaces; some panels radiate from one side or both.',
+        generator: generateLevel7
+      },
+      {
+        id: 9,
+        title: 'Tilt',
+        short: 'Tilt and projection',
+        subtitle: 'The intercepted sunlight changes with the cosine of the angle.',
+        splash: [
+          'Now add tilt to the geometry questions.',
+          'Tilt changes the intercepted sunlight through a cosθ factor.',
+          'Keep the absorbing geometry and the emitting geometry separate in your mind.'
+        ],
+        extra: 'This is the place to get used to projection factors before moving on to warm surroundings.',
+        generator: generateLevel8Tilt
+      },
+      {
+        id: 10,
+        title: 'Object in a room with a power source',
+        short: 'Warm surroundings',
+        subtitle: 'The room itself radiates onto the object, so ambient temperature matters.',
+        splash: [
+          'This final level adds a warm environment.',
+          'A powered object in a room does not radiate into empty space; it both emits and absorbs thermal radiation from the room.',
+          'That means the balance involves T⁴ − T_room⁴, or equivalently adding the room-radiation term first.'
+        ],
+        extra: 'A very common mistake is to use room temperature in °C inside a fourth power.',
+        generator: generateLevel8
+      }
+    ];
+
+    const SOLAR_SYSTEM_BODIES = [
+      { name: 'Mercury', d: 0.39, a: 0.12 },
+      { name: 'the Moon', d: 1.0, a: 0.12 },
+      { name: 'Mars', d: 1.52, a: 0.25 },
+      { name: 'Vesta', d: 2.36, a: 0.42 },
+      { name: 'Ceres', d: 2.77, a: 0.09 },
+      { name: 'Europa', d: 5.20, a: 0.67 },
+      { name: 'Ganymede', d: 5.20, a: 0.43 },
+      { name: 'Callisto', d: 5.20, a: 0.19 },
+      { name: 'Enceladus', d: 9.58, a: 0.81 },
+      { name: 'Triton', d: 30.1, a: 0.76 },
+      { name: 'Pluto', d: 39.5, a: 0.52 }
+    ];
+
+    const dom = {
+      overallScore: document.getElementById('overallScore'),
+      overallPercent: document.getElementById('overallPercent'),
+      currentLevelMini: document.getElementById('currentLevelMini'),
+      currentLevelNameMini: document.getElementById('currentLevelNameMini'),
+      recentStreak: document.getElementById('recentStreak'),
+      levelList: document.getElementById('levelList'),
+      errorGrid: document.getElementById('errorGrid'),
+      levelBadge: document.getElementById('levelBadge'),
+      levelTitle: document.getElementById('levelTitle'),
+      levelSubtitle: document.getElementById('levelSubtitle'),
+      splashCard: document.getElementById('splashCard'),
+      questionCard: document.getElementById('questionCard'),
+      questionMeta: document.getElementById('questionMeta'),
+      questionStem: document.getElementById('questionStem'),
+      questionHintBox: document.getElementById('questionHintBox'),
+      answerInput: document.getElementById('answerInput'),
+      submitBtn: document.getElementById('submitBtn'),
+      newQuestionBtn: document.getElementById('newQuestionBtn'),
+      showSolutionBtn: document.getElementById('showSolutionBtn'),
+      feedbackBox: document.getElementById('feedbackBox'),
+      solutionDetails: document.getElementById('solutionDetails'),
+      solutionBody: document.getElementById('solutionBody'),
+      prevBtn: document.getElementById('prevBtn'),
+      nextBtn: document.getElementById('nextBtn'),
+      replayBtn: document.getElementById('replayBtn'),
+      resetBtn: document.getElementById('resetBtn')
+    };
+
+    let state = loadState();
+    let currentQuestion = null;
+    let hasSubmittedCurrent = false;
+    let hasRecordedNonScoringCurrent = false;
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.levels) && parsed.levels.length === LEVELS.length && parsed.errors && parsed.currentLevel) {
+            return {
+              currentLevel: Math.max(1, Math.min(LEVELS.length, parsed.currentLevel)),
+              levels: parsed.levels.map(level => ({
+                attempts: Number(level?.attempts) || 0,
+                correct: Number(level?.correct) || 0,
+                recent: Array.isArray(level?.recent) ? level.recent.filter(item => ['ok', 'bad', 'shown', 'skipped'].includes(item)).slice(-10) : []
+              })),
+              errors: Object.fromEntries(ERROR_CATALOG.map(item => [item.code, Number(parsed.errors?.[item.code]) || 0]))
+            };
+          }
+        }
+      } catch (err) {}
+      return freshState();
+    }
+
+    function freshState() {
+      const errors = {};
+      ERROR_CATALOG.forEach(item => { errors[item.code] = 0; });
+      return {
+        currentLevel: 1,
+        levels: LEVELS.map(() => ({ attempts: 0, correct: 0, recent: [] })),
+        errors
+      };
+    }
+
+    function saveState() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function rand(min, max) {
+      return Math.random() * (max - min) + min;
+    }
+
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function choose(arr) {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function roundTo(value, dp = 0) {
+      const p = 10 ** dp;
+      return Math.round(value * p) / p;
+    }
+
+    function fmt(value, dp = 2) {
+      return Number(value).toFixed(dp).replace(/\.00$/, '').replace(/(\.\d*[1-9])0+$/, '$1');
+    }
+
+    function toRequestedUnit(tempK, requestedUnit) {
+      return requestedUnit === 'K' ? tempK : tempK - 273.15;
+    }
+
+    function sphereTempK(distanceAU, albedo = 0, emissivity = 1) {
+      return Math.pow((SOLAR * (1 - albedo)) / (4 * emissivity * SIGMA * distanceAU * distanceAU), 0.25);
+    }
+
+    function fluxToTempK(flux, emissivity = 1) {
+      return Math.pow(flux / (emissivity * SIGMA), 0.25);
+    }
+
+    function intensityFromStar(luminositySolar, distanceAU) {
+      return SOLAR * luminositySolar / (distanceAU * distanceAU);
+    }
+
+    function areaSphere(radius) {
+      return 4 * Math.PI * radius * radius;
+    }
+
+    function areaCube(side) {
+      return 6 * side * side;
+    }
+
+    function percent(correct, attempts) {
+      if (!attempts) return 0;
+      return Math.round((100 * correct) / attempts);
+    }
+
+    function currentLevelDef() {
+      return LEVELS[state.currentLevel - 1];
+    }
+
+    function defaultHint(level) {
+      const hints = {
+        1: 'At equilibrium, power in = power out. For a sphere at 1 AU, the average absorbed solar flux is S₀/4.',
+        2: 'At equilibrium, power in = power out. Use (1 − a) on the solar-input side. This level keeps emissivity at 1.',
+        3: 'At equilibrium, power in = power out. Keep albedo on the input side through (1 − a), and put emissivity ε on the emitted side as εσT⁴.',
+        4: 'At equilibrium, power in = power out. Use the distance and any stated albedo or emissivity carefully; solar flux scales as 1/d².',
+        5: 'At equilibrium, power in = power out. First find the intensity from the star’s luminosity and distance, then use that in the temperature balance.',
+        6: 'At equilibrium, power in = power out. Decide which area absorbs sunlight and which area emits thermal radiation. If ε is given, it multiplies the emitted term.',
+        7: 'At equilibrium, power in = power out. Treat it as a flux budget: add the incoming terms you have been given, then set that equal to εσT⁴ if emissivity is stated.',
+        8: 'At equilibrium, power in = power out. Here the power in is internal, so internal power balances radiated power.',
+        9: 'At equilibrium, power in = power out. Tilt changes the intercepted sunlight through a cosθ factor. If ε is given, keep it on the emitted side.',
+        10: 'At equilibrium, power in = power out. Use kelvin for the room temperature and include the room-radiation term before taking the fourth root.'
+      };
+      return hints[level] || 'At equilibrium, power in = power out.';      return hints[level] || 'At equilibrium, power in = power out.';
+    }
+
+    function typesetMath(elements) {
+      const targets = Array.isArray(elements) ? elements.filter(Boolean) : [elements].filter(Boolean);
+      if (!targets.length) return;
+      if (window.MathJax && typeof window.MathJax.typesetPromise === 'function') {
+        window.MathJax.typesetPromise(targets).catch(() => {});
+      }
+    }
+
+    function stripEquilibriumLead(text = '') {
+      return text.replace(/^At equilibrium, power in = power out\.?\s*/i, '').trim();
+    }
+
+    function buildHintHtml(question) {
+      const remainder = stripEquilibriumLead(question.hint || '');
+      return `
+        <div class="hint-stack">
+          <div class="equilibrium-line">At equilibrium, power in = power out</div>
+          ${remainder ? `<div>${remainder}</div>` : ''}
+        </div>
+      `;
+    }
+
+    function workedIntroHtml() {
+      return `
+        <div class="equilibrium-line">At equilibrium, power in = power out</div>
+        <div class="formula-box">\\( P_{in} = P_{out} \\)</div>
+      `;
+    }
+
+    function powerPart(value, unit = 'W m⁻²') {
+      return value == null ? '?' : `${fmt(value, 1)} ${unit}`;
+    }
+
+    function powerSplitDiagramHtml({ incoming, reflected, absorbed }) {
+      return `
+        <div class="mini-budget">
+          <div class="mini-budget-title">Average solar-power split over the whole sphere</div>
+          <div class="mini-budget-row">
+            <div class="mini-budget-box">
+              <span class="mini-budget-label">input</span>
+              <span class="mini-budget-value">${powerPart(incoming)}</span>
+            </div>
+            <div class="mini-budget-arrow">→</div>
+            <div class="mini-budget-box">
+              <span class="mini-budget-label">reflected</span>
+              <span class="mini-budget-value">${powerPart(reflected)}</span>
+            </div>
+            <div class="mini-budget-arrow">+</div>
+            <div class="mini-budget-box">
+              <span class="mini-budget-label">absorbed</span>
+              <span class="mini-budget-value">${powerPart(absorbed)}</span>
+            </div>
+          </div>
+          <div class="mini-budget-note">Use the missing part of the split first, then match the absorbed term to the thermal emission.</div>
+        </div>
+      `;
+    }
+
+    function basicMathForLevel(levelId) {
+      const map = {
+        1: {
+          intro: 'This is the standard sphere-at-Earth-distance model.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( S_0 \\pi r^2 = 4\\pi r^2 \\sigma T^4 \\)',
+            '\\( \\sigma T^4 = S_0/4 \\)'
+          ],
+          tips: ['A sphere absorbs over \\(\\pi r^2\\).', 'A sphere emits over \\(4\\pi r^2\\).']
+        },
+        2: {
+          intro: 'Now keep the same sphere geometry, but include albedo only.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( S_0(1-a)\\pi r^2 = 4\\pi r^2 \\sigma T^4 \\)',
+            '\\( \\sigma T^4 = S_0(1-a)/4 \\)'
+          ],
+          tips: ['Albedo \\(a\\) is the reflected fraction.', 'The heating fraction is \\(1-a\\).']
+        },
+        3: {
+          intro: 'Now add emissivity as a separate extra idea on the output side.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( S_0(1-a)\\pi r^2 = 4\\pi r^2 \\varepsilon\\sigma T^4 \\)',
+            '\\( T = \\left(\\dfrac{S_0(1-a)}{4\\varepsilon\\sigma}\\right)^{1/4} \\)'
+          ],
+          tips: ['Albedo changes input.', 'Emissivity changes output.']
+        },
+        4: {
+          intro: 'Distance changes the incoming solar flux through the inverse-square law.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( S_0(1-a)\\pi r^2 / d^2 = 4\\pi r^2 \\varepsilon\\sigma T^4 \\)',
+            '\\( T = \\left(\\dfrac{S_0(1-a)}{4\\varepsilon\\sigma d^2}\\right)^{1/4} \\)'
+          ],
+          tips: ['Use the stated distance, in AU, carefully.', 'Named worlds use the same model.']
+        },
+        5: {
+          intro: 'Here you first turn luminosity and distance into the intensity at the object.',
+          eqs: [
+            '\\( I = 1361\\times \\dfrac{L/L_\\odot}{d^2} \\)',
+            '\\( P_{in} = P_{out} \\)',
+            '\\( T = \\left(\\dfrac{I(1-a)}{4\\varepsilon\\sigma}\\right)^{1/4} \\)'
+          ],
+          tips: ['First find intensity.', 'Then do the usual equilibrium step.']
+        },
+        6: {
+          intro: 'Choose the absorbing area and the emitting area from the geometry shown.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( (\\text{incoming flux})(\\text{absorbing area}) = \\varepsilon\\sigma T^4(\\text{emitting area}) \\)'
+          ],
+          tips: ['A flat object does not use the sphere pattern.', 'Read whether one face or both faces radiate.']
+        },
+        7: {
+          intro: 'Budget questions are about adding the incoming terms before solving.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( F_{in} = F_{solar} + F_{back} \\)',
+            '\\( \\varepsilon\\sigma T^4 = F_{in} \\)'
+          ],
+          tips: ['If the flux is already averaged over the surface, do not divide by 4 again.']
+        },
+        8: {
+          intro: 'In deep space the heating is internal rather than solar.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( P_{internal} = \\varepsilon\\sigma A T^4 \\)'
+          ],
+          tips: ['The emitting area matters a lot here.']
+        },
+        9: {
+          intro: 'Tilt changes the intercepted sunlight through a cosine factor.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( S_0(1-a)A\\cos\\theta / d^2 = \\varepsilon\\sigma T^4 A_{emit} \\)'
+          ],
+          tips: ['Tilt changes the sunlight collected, not automatically the thermal-emission area.']
+        },
+        10: {
+          intro: 'A warm room radiates onto the object as well.',
+          eqs: [
+            '\\( P_{in} = P_{out} \\)',
+            '\\( P = \\varepsilon\\sigma A (T^4 - T_{room}^4) \\)',
+            '\\( T = \\left(T_{room}^4 + \\dfrac{P}{\\varepsilon\\sigma A}\\right)^{1/4} \\)'
+          ],
+          tips: ['Use kelvin inside every fourth power.']
+        }
+      };
+      const item = map[levelId];
+      if (!item) return '';
+      return `
+        <details class="basic-maths">
+          <summary>Show the basic maths</summary>
+          <div class="welcome-stack" style="margin-top:12px;">
+            <p class="small">${item.intro}</p>
+            <div class="formula-box">${item.eqs.map(eq => `<div>${eq}</div>`).join('')}</div>
+            ${item.tips?.length ? `<ul class="math-list">${item.tips.map(tip => `<li>${tip}</li>`).join('')}</ul>` : ''}
+          </div>
+        </details>
+      `;
+    }
+
+    function levelDiagram(levelId) {
+      const blocks = {
+        1: {
+          title: 'Core geometry',
+          items: [
+            '<strong>Sunlight in:</strong> over <span class="diagram-math">\( \pi r^2 \)</span>',
+            '<strong>Thermal out:</strong> over <span class="diagram-math">\( 4\pi r^2 \)</span>',
+            '<strong>So:</strong> average absorbed solar flux is <span class="diagram-math">\( S_0/4 \)</span>'
+          ]
+        },
+        2: {
+          title: 'Albedo only',
+          items: [
+            '<strong>Reflected fraction:</strong> <span class="diagram-math">\( a \)</span>',
+            '<strong>Absorbed fraction:</strong> <span class="diagram-math">\( 1-a \)</span>',
+            '<strong>This stage:</strong> keep emissivity at <span class="diagram-math">\( 1 \)</span>'
+          ]
+        },
+        3: {
+          title: 'Now add emissivity',
+          items: [
+            '<strong>Absorbed solar part:</strong> <span class="diagram-math">\( 1-a \)</span>',
+            '<strong>Emitted thermal part:</strong> <span class="diagram-math">\( \varepsilon \sigma T^4 \)</span>',
+            '<strong>Keep the roles straight:</strong> albedo changes input; emissivity changes output'
+          ]
+        },
+        4: {
+          title: 'Distance questions',
+          items: [
+            '<strong>Solar intensity:</strong> falls as <span class="diagram-math">\( 1/d^2 \)</span>',
+            '<strong>Then use:</strong> the same sphere balance as before',
+            '<strong>Watch for:</strong> distance, albedo, and sometimes emissivity'
+          ]
+        },
+        5: {
+          title: 'Star luminosity questions',
+          items: [
+            '<strong>First find intensity:</strong> <span class="diagram-math">\( I=L/(4\pi r^2) \)</span>',
+            '<strong>Then use:</strong> that intensity in the equilibrium balance',
+            '<strong>Same idea:</strong> input side first, then output side'
+          ]
+        },
+        6: {
+          title: 'Geometry questions',
+          items: [
+            '<strong>Ask first:</strong> what area absorbs?',
+            '<strong>Ask next:</strong> what area emits?',
+            '<strong>Only then:</strong> write the balance equation'
+          ]
+        },
+        7: {
+          title: 'Energy-budget questions',
+          items: [
+            '<strong>Add the incoming terms.</strong>',
+            '<strong>Do not divide by 4 again</strong> if a flux is already surface-averaged.',
+            '<strong>Then set:</strong> total input = emitted thermal flux'
+          ]
+        },
+        8: {
+          title: 'Internal-power questions',
+          items: [
+            '<strong>Power in:</strong> internal power',
+            '<strong>Power out:</strong> thermal emission from the stated area',
+            '<strong>Main trap:</strong> using the wrong emitting area'
+          ]
+        },
+        9: {
+          title: 'Tilt questions',
+          items: [
+            '<strong>Tilt changes input</strong> through <span class="diagram-math">\( \cos\theta \)</span>.',
+            '<strong>It does not automatically change</strong> the emitting area.',
+            '<strong>Then finish:</strong> with the usual thermal balance'
+          ]
+        },
+        10: {
+          title: 'Warm surroundings',
+          items: [
+            '<strong>The room also radiates onto the object.</strong>',
+            '<strong>Use kelvin</strong> inside every fourth-power term.',
+            '<strong>Think net radiation,</strong> not radiation into empty space.'
+          ]
+        }
+      };
+      const info = blocks[levelId];
+      if (!info) return '';
+      return `
+        <div class="diagram-card simple-diagram-card">
+          <div class="diagram-caption"><strong>${info.title}</strong></div>
+          <div class="simple-diagram-grid">
+            ${info.items.map(item => `<div class="simple-diagram-box">${item}</div>`).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    function splashWelcomeHtml(level) {
+      return `
+        <div class="welcome-card">
+          <div class="equilibrium-line">At equilibrium, power in = power out</div>
+          <p>This level is here to give you some practice with another kind of question on this topic, so you can get used to the different elements you might meet.</p>
+          <p class="small">Start gently, have a go, and move on whenever you feel ready.</p>
+        </div>
+      `;
+    }
+
+    function buildQuestion(config) {
+      const requestedUnit = config.requestedUnit || 'K';
+      const decimals = config.decimals ?? (requestedUnit === 'K' ? 0 : 1);
+      const displayAnswer = roundTo(toRequestedUnit(config.exactK, requestedUnit), decimals);
+      const baseTolerance = decimals === 0 ? 1.4 : 0.25;
+      const tolerance = Math.max(baseTolerance, Math.abs(displayAnswer) * 0.012);
+      return {
+        ...config,
+        requestedUnit,
+        decimals,
+        displayAnswer,
+        tolerance,
+        hint: config.hint || defaultHint(state.currentLevel)
+      };
+    }
+
+    function compareValue(userValue, targetValue, tolerance) {
+      return Math.abs(userValue - targetValue) <= tolerance;
+    }
+
+    function labelForUnit(unit) {
+      return unit === 'K' ? 'K' : '°C';
+    }
+
+    function randomAskedUnit(preferC = false) {
+      if (preferC) {
+        return choose([
+          { requestedUnit: 'C', decimals: 0, label: 'nearest whole °C' },
+          { requestedUnit: 'C', decimals: 1, label: '1 d.p. in °C' },
+          { requestedUnit: 'K', decimals: 0, label: 'nearest whole K' }
+        ]);
+      }
+      return choose([
+        { requestedUnit: 'K', decimals: 0, label: 'nearest whole K' },
+        { requestedUnit: 'K', decimals: 1, label: '1 d.p. in K' },
+        { requestedUnit: 'C', decimals: 0, label: 'nearest whole °C' }
+      ]);
+    }
+
+    function addUnitAltAnswers(exactK, requestedUnit, alts) {
+      if (requestedUnit === 'K') {
+        alts.push({ code: 'unit_not_converted_to_k', value: exactK - 273.15 });
+      } else {
+        alts.push({ code: 'unit_not_converted_to_c', value: exactK });
+      }
+    }
+
+    function generateLevel1() {
+      const obj = choose(['satellite', 'probe', 'asteroid', 'test sphere', 'metal sphere']);
+      const ask = randomAskedUnit();
+      const exactK = sphereTempK(1, 0);
+      const noGeom = Math.pow(SOLAR / SIGMA, 0.25);
+      const inventedEarthAlbedo = sphereTempK(1, 0.3);
+      const alts = [
+        { code: 'geometry_sphere', value: toRequestedUnit(noGeom, ask.requestedUnit) },
+        { code: 'invented_albedo', value: toRequestedUnit(inventedEarthAlbedo, ask.requestedUnit) }
+      ];
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 1',
+        stem: `A small spherical <span class="highlight">${obj}</span> is at Earth’s distance from the Sun and behaves like a perfect absorber and emitter. Ignore atmosphere. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['sphere', '1 AU', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          <p>For a sphere at 1 AU with no albedo:</p>
+          <div class="formula-box">\\( S_0\\pi r^2 = 4\\pi r^2\\sigma T^4 \\)</div>
+          <div class="formula-box">\\( \\sigma T^4 = \\dfrac{S_0}{4} \\)</div>
+          <div class="formula-box">\\( T = \\left(\\dfrac{1361}{4 \\times 5.67\\times10^{-8}}\\right)^{1/4} = ${fmt(exactK, 2)}\,\\text{K} \\)</div>
+          <p>Requested unit: <strong>${labelForUnit(ask.requestedUnit)}</strong>. Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel2() {
+      const ask = randomAskedUnit();
+      const albedo = roundTo(rand(0.08, 0.78), 2);
+      const exactK = sphereTempK(1, albedo, 1);
+      const noAlbedo = sphereTempK(1, 0, 1);
+      const usedA = Math.pow((SOLAR * albedo) / (4 * SIGMA), 0.25);
+      const noGeom = Math.pow((SOLAR * (1 - albedo)) / SIGMA, 0.25);
+
+      if (Math.random() < 0.5) {
+        const describeAlbedo = choose([
+          `has an albedo of <span class="highlight">${fmt(albedo, 2)}</span>`,
+          `reflects <span class="highlight">${fmt(albedo * 100, 0)}%</span> of the incoming sunlight`
+        ]);
+        const alts = [
+          { code: 'albedo_omitted', value: toRequestedUnit(noAlbedo, ask.requestedUnit) },
+          { code: 'albedo_used_instead', value: toRequestedUnit(usedA, ask.requestedUnit) },
+          { code: 'geometry_sphere', value: toRequestedUnit(noGeom, ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 2a',
+          stem: `A spherical body at Earth’s distance from the Sun ${describeAlbedo}. Ignore atmosphere. Find the equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['sphere', '1 AU', `albedo ${fmt(albedo,2)}`, 'ε = 1', ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            ${workedIntroHtml()}
+            <p>For this question, albedo changes the absorbed sunlight but the emitted term stays as \( \sigma T^4 \).</p>
+            <div class="formula-box">\( S_0(1-a)\pi r^2 = 4\pi r^2 \sigma T^4 \)</div>
+            <div class="formula-box">\( T = \left(\dfrac{1361\times(1-${fmt(albedo,2)})}{4\times 5.67\times10^{-8}}\right)^{1/4} = ${fmt(exactK, 2)}\,\text{K} \)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      const incomingAvg = SOLAR / 4;
+      const reflectedAvg = incomingAvg * albedo;
+      const absorbedAvg = incomingAvg * (1 - albedo);
+      const missing = choose(['reflected', 'absorbed']);
+      const alts = [
+        { code: 'albedo_omitted', value: toRequestedUnit(fluxToTempK(incomingAvg, 1), ask.requestedUnit) },
+        { code: 'albedo_used_instead', value: toRequestedUnit(fluxToTempK(reflectedAvg, 1), ask.requestedUnit) },
+        { code: 'divided_by_4_again', value: toRequestedUnit(fluxToTempK(absorbedAvg / 4, 1), ask.requestedUnit) }
+      ];
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+
+      const diagramHtml = powerSplitDiagramHtml({
+        incoming: incomingAvg,
+        reflected: missing === 'reflected' ? null : reflectedAvg,
+        absorbed: missing === 'absorbed' ? null : absorbedAvg
+      });
+
+      return buildQuestion({
+        promptTag: 'Level 2a',
+        stem: `A spherical body at Earth’s distance from the Sun has the average solar-power split shown below. Work out the missing quantity, then find the equilibrium temperature to <span class="highlight">${ask.label}</span>. ${diagramHtml}`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['albedo split', '1 AU', 'ε = 1', ask.label],
+        altAnswers: alts,
+        hint: 'At equilibrium, power in = power out. First use input = reflected + absorbed to find the missing part of the solar-power split. Then set the absorbed average flux equal to σT⁴.',
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>The missing part of the split comes from</p>
+          <div class="formula-box">\( F_{input} = F_{reflected} + F_{absorbed} \)</div>
+          ${missing === 'absorbed'
+            ? `<div class="formula-box">\( F_{absorbed} = ${fmt(incomingAvg,1)} - ${fmt(reflectedAvg,1)} = ${fmt(absorbedAvg,1)}\,\text{W m}^{-2} \)</div>`
+            : `<div class="formula-box">\( F_{reflected} = ${fmt(incomingAvg,1)} - ${fmt(absorbedAvg,1)} = ${fmt(reflectedAvg,1)}\,\text{W m}^{-2} \)</div>
+               <div class="formula-box">\( F_{absorbed} = ${fmt(absorbedAvg,1)}\,\text{W m}^{-2} \)</div>`}
+          <p>Now use the thermal balance:</p>
+          <div class="formula-box">\( \sigma T^4 = F_{absorbed} \)</div>
+          <div class="formula-box">\( T = \left(\dfrac{${fmt(absorbedAvg,1)}}{5.67\times10^{-8}}\right)^{1/4} = ${fmt(exactK,2)}\,\text{K} \)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel3Emissivity() {
+      const ask = randomAskedUnit();
+      const albedo = roundTo(rand(0.08, 0.78), 2);
+      const emissivity = roundTo(rand(0.45, 0.96), 2);
+      const exactK = sphereTempK(1, albedo, emissivity);
+      const noAlbedo = sphereTempK(1, 0, emissivity);
+      const usedA = Math.pow((SOLAR * albedo) / (4 * emissivity * SIGMA), 0.25);
+      const noGeom = Math.pow((SOLAR * (1 - albedo)) / (emissivity * SIGMA), 0.25);
+      const noEmissivity = sphereTempK(1, albedo, 1);
+      const wrongWayEmissivity = Math.pow((SOLAR * (1 - albedo) * emissivity) / (4 * SIGMA), 0.25);
+
+      const alts = [
+        { code: 'albedo_omitted', value: toRequestedUnit(noAlbedo, ask.requestedUnit) },
+        { code: 'albedo_used_instead', value: toRequestedUnit(usedA, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(noGeom, ask.requestedUnit) },
+        { code: 'emissivity_omitted', value: toRequestedUnit(noEmissivity, ask.requestedUnit) },
+        { code: 'emissivity_wrong_way', value: toRequestedUnit(wrongWayEmissivity, ask.requestedUnit) }
+      ];
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+
+      return buildQuestion({
+        promptTag: 'Level 2b',
+        stem: `A spherical body at Earth’s distance from the Sun has albedo <span class="highlight">${fmt(albedo,2)}</span> and emissivity <span class="highlight">${fmt(emissivity,2)}</span>. Ignore atmosphere. Find the equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['sphere', '1 AU', `albedo ${fmt(albedo,2)}`, `ε ${fmt(emissivity,2)}`, ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>Now keep albedo on the input side and emissivity on the emitted side.</p>
+          <div class="formula-box">\( S_0(1-a)\pi r^2 = 4\pi r^2 \varepsilon \sigma T^4 \)</div>
+          <div class="formula-box">\( T = \left(\dfrac{1361\times(1-${fmt(albedo,2)})}{4\times ${fmt(emissivity,2)}\times 5.67\times10^{-8}}\right)^{1/4} = ${fmt(exactK, 2)}\,\text{K} \)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel3() {
+      const ask = randomAskedUnit();
+      const withAlbedo = Math.random() < 0.7;
+      const withEmissivity = Math.random() < 0.45;
+      const d = roundTo(rand(0.35, 8.8), 2);
+      const albedo = withAlbedo ? roundTo(rand(0.05, 0.75), 2) : 0;
+      const emissivity = withEmissivity ? roundTo(rand(0.45, 0.96), 2) : 1;
+      const exactK = sphereTempK(d, albedo, emissivity);
+      const noDsq = Math.pow((SOLAR * (1 - albedo)) / (4 * emissivity * SIGMA * d), 0.25);
+      const assumeEarth = sphereTempK(1, albedo, emissivity);
+      const noGeom = Math.pow((SOLAR * (1 - albedo)) / (emissivity * SIGMA * d * d), 0.25);
+      const alts = [
+        { code: 'distance_wrong_power', value: toRequestedUnit(noDsq, ask.requestedUnit) },
+        { code: 'earth_distance_assumed', value: toRequestedUnit(assumeEarth, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(noGeom, ask.requestedUnit) }
+      ];
+      if (withAlbedo) {
+        alts.push({ code: 'albedo_omitted', value: toRequestedUnit(sphereTempK(d, 0, emissivity), ask.requestedUnit) });
+      }
+      if (withEmissivity) {
+        alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(sphereTempK(d, albedo, 1), ask.requestedUnit) });
+        alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo) * emissivity) / (4 * SIGMA * d * d), 0.25), ask.requestedUnit) });
+      }
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      const templates = [
+        `A spherical object orbits the Sun at <span class="highlight">${fmt(d,2)} AU</span>${withAlbedo ? ` and has albedo <span class="highlight">${fmt(albedo,2)}</span>` : ''}${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Ignore atmosphere. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        `A small sphere is <span class="highlight">${fmt(d,2)}</span> times Earth’s distance from the Sun${withAlbedo ? ` and reflects <span class="highlight">${fmt(albedo*100,0)}%</span> of the sunlight` : ''}${withEmissivity ? `, with emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Estimate its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        `Model a spherical body at <span class="highlight">${fmt(d,2)} AU</span>${withAlbedo ? ` with albedo <span class="highlight">${fmt(albedo,2)}</span>` : ' as a black sphere'}${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. What is its equilibrium temperature to <span class="highlight">${ask.label}</span>?`
+      ];
+      return buildQuestion({
+        promptTag: 'Level 3',
+        stem: choose(templates),
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['sphere', `${fmt(d,2)} AU`, withAlbedo ? `albedo ${fmt(albedo,2)}` : 'no albedo', withEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>At distance <strong>${fmt(d,2)} AU</strong>, the solar flux is reduced by <strong>1/d²</strong>.</p>
+          <div class="formula-box">\\( S_0(1-a)\\pi r^2 / d^2 = 4\\pi r^2 ${withEmissivity ? `\\varepsilon ` : ''}\\sigma T^4 \\)</div>
+          <div class="formula-box">\\( T = \\left(\\dfrac{1361\\times(1-${fmt(albedo,2)})}{4${withEmissivity ? `\\times ${fmt(emissivity,2)}` : ''}\\times 5.67\\times10^{-8}\\times (${fmt(d,2)})^2}\\right)^{1/4} = ${fmt(exactK, 2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel4() {
+      const ask = randomAskedUnit(true);
+      const useEmissivity = Math.random() < 0.45;
+      const emissivity = useEmissivity ? roundTo(rand(0.50, 0.96), 2) : 1;
+      const variant = Math.random() < 0.55 ? 'directBudget' : 'solarPlusBack';
+      if (variant === 'directBudget') {
+        const solarSurface = randInt(120, 240);
+        const backRad = randInt(140, 360);
+        const totalIn = solarSurface + backRad;
+        const exactK = fluxToTempK(totalIn, emissivity);
+        const alts = [
+          { code: 'back_radiation_omitted', value: toRequestedUnit(fluxToTempK(solarSurface, emissivity), ask.requestedUnit) },
+          { code: 'divided_by_4_again', value: toRequestedUnit(fluxToTempK(totalIn / 4, emissivity), ask.requestedUnit) }
+        ];
+        if (useEmissivity) {
+          alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(fluxToTempK(totalIn, 1), ask.requestedUnit) });
+          alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((totalIn * emissivity) / SIGMA, 0.25), ask.requestedUnit) });
+        }
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 6',
+          stem: `For a planet with an atmosphere, the surface absorbs <span class="highlight">${solarSurface} W m⁻²</span> of solar radiation and receives <span class="highlight">${backRad} W m⁻²</span> of downward infrared radiation from the atmosphere${useEmissivity ? `; the surface emissivity is <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Find the surface equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['budget', `${solarSurface}+${backRad} W m⁻²`, useEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            ${workedIntroHtml()}
+            <p>Add the incoming flux terms at the surface:</p>
+            <div class="formula-box">\\( F_{in} = ${solarSurface} + ${backRad} = ${totalIn}\,\\text{W m}^{-2} \\)</div>
+            <div class="formula-box">\\( ${useEmissivity ? `\\varepsilon` : ''}\\sigma T^4 = F_{in} \\)</div>
+            <div class="formula-box">\\( T = \\left(\\dfrac{${totalIn}}{${useEmissivity ? `${fmt(emissivity,2)}\\times ` : ''}5.67\\times10^{-8}}\\right)^{1/4} = ${fmt(exactK, 2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      const albedo = roundTo(rand(0.1, 0.65), 2);
+      const backRad = randInt(160, 340);
+      const solarAvg = SOLAR * (1 - albedo) / 4;
+      const totalIn = solarAvg + backRad;
+      const exactK = fluxToTempK(totalIn, emissivity);
+      const alts = [
+        { code: 'albedo_omitted', value: toRequestedUnit(fluxToTempK(SOLAR / 4 + backRad, emissivity), ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(fluxToTempK(SOLAR * (1 - albedo) + backRad, emissivity), ask.requestedUnit) },
+        { code: 'back_radiation_omitted', value: toRequestedUnit(fluxToTempK(solarAvg, emissivity), ask.requestedUnit) }
+      ];
+      if (useEmissivity) {
+        alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(fluxToTempK(totalIn, 1), ask.requestedUnit) });
+        alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((totalIn * emissivity) / SIGMA, 0.25), ask.requestedUnit) });
+      }
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 6',
+        stem: `A planet is at Earth’s distance from the Sun with albedo <span class="highlight">${fmt(albedo,2)}</span>. Its atmosphere returns <span class="highlight">${backRad} W m⁻²</span> of infrared radiation downward to the surface${useEmissivity ? `, and the surface emissivity is <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Find the <span class="highlight">surface</span> equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['surface budget', `albedo ${fmt(albedo,2)}`, `${backRad} W m⁻² back-rad`, useEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>First find the average absorbed solar flux:</p>
+          <div class="formula-box">\\( \\dfrac{S_0(1-a)}{4} = \\dfrac{1361\\times(1-${fmt(albedo,2)})}{4} = ${fmt(solarAvg, 2)}\,\\text{W m}^{-2} \\)</div>
+          <p>Add the atmospheric back-radiation:</p>
+          <div class="formula-box">\\( F_{in} = ${fmt(solarAvg,2)} + ${backRad} = ${fmt(totalIn,2)}\,\\text{W m}^{-2} \\)</div>
+          <div class="formula-box">\\( ${useEmissivity ? `\\varepsilon` : ''}\\sigma T^4 = F_{in} \\)</div>
+          <div class="formula-box">\\( T = ${fmt(exactK, 2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel5() {
+      const ask = randomAskedUnit();
+      const body = choose(SOLAR_SYSTEM_BODIES);
+      const withEmissivity = Math.random() < 0.4;
+      const emissivity = withEmissivity ? roundTo(rand(0.45, 0.96), 2) : 1;
+      const exactK = sphereTempK(body.d, body.a, emissivity);
+      const noAlbedo = sphereTempK(body.d, 0, emissivity);
+      const noGeom = Math.pow((SOLAR * (1 - body.a)) / (emissivity * SIGMA * body.d * body.d), 0.25);
+      const earthDistance = sphereTempK(1, body.a, emissivity);
+      const alts = [
+        { code: 'albedo_omitted', value: toRequestedUnit(noAlbedo, ask.requestedUnit) },
+        { code: 'earth_distance_assumed', value: toRequestedUnit(earthDistance, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(noGeom, ask.requestedUnit) }
+      ];
+      if (withEmissivity) {
+        alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(sphereTempK(body.d, body.a, 1), ask.requestedUnit) });
+        alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((SOLAR * (1 - body.a) * emissivity) / (4 * SIGMA * body.d * body.d), 0.25), ask.requestedUnit) });
+      }
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      const wording = choose([
+        `Estimate the mean equilibrium temperature of <span class="highlight">${body.name}</span>, treating it as a spherical body with albedo <span class="highlight">${fmt(body.a,2)}</span> at a distance of <span class="highlight">${fmt(body.d,2)} AU</span>${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Give your answer to <span class="highlight">${ask.label}</span>.`,
+        `Model <span class="highlight">${body.name}</span> as a spherical body at <span class="highlight">${fmt(body.d,2)} AU</span> with albedo <span class="highlight">${fmt(body.a,2)}</span>${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. What is its equilibrium temperature to <span class="highlight">${ask.label}</span>?`,
+        `Ignoring atmosphere and internal heating, find the radiative-equilibrium temperature of <span class="highlight">${body.name}</span> using distance <span class="highlight">${fmt(body.d,2)} AU</span>, albedo <span class="highlight">${fmt(body.a,2)}</span>${withEmissivity ? `, and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Answer to <span class="highlight">${ask.label}</span>.`
+      ]);
+      return buildQuestion({
+        promptTag: 'Level 3',
+        stem: wording,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: [body.name, `${fmt(body.d,2)} AU`, `albedo ${fmt(body.a,2)}`, withEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>Use the same spherical equilibrium model as before:</p>
+          <div class="formula-box">\\( T = \\left(\\dfrac{S_0(1-a)}{4${withEmissivity ? `\\varepsilon` : ''}\\sigma d^2}\\right)^{1/4} \\)</div>
+          <p>For ${body.name}: \\( d = ${fmt(body.d,2)} \\), \\( a = ${fmt(body.a,2)} \\)${withEmissivity ? `, \\( \\varepsilon = ${fmt(emissivity,2)} \\)` : ''}.</p>
+          <div class="formula-box">\\( T = ${fmt(exactK, 2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel6() {
+      const ask = randomAskedUnit();
+      const variant = choose(['sail', 'panelTilt', 'surfacePlate']);
+      const d = roundTo(rand(0.6, 4.5), 2);
+      const albedo = roundTo(rand(0.04, 0.55), 2);
+      if (variant === 'sail') {
+        const emitFaces = choose([1, 2]);
+        const exactK = Math.pow((SOLAR * (1 - albedo)) / (emitFaces * SIGMA * d * d), 0.25);
+        const sphereMistake = sphereTempK(d, albedo);
+        const wrongFaces = Math.pow((SOLAR * (1 - albedo)) / ((emitFaces === 1 ? 2 : 1) * SIGMA * d * d), 0.25);
+        const alts = [
+          { code: 'geometry_sphere', value: toRequestedUnit(sphereMistake, ask.requestedUnit) },
+          { code: 'flat_faces_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) },
+          { code: 'albedo_omitted', value: toRequestedUnit(Math.pow(SOLAR / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 6',
+          stem: `A thin flat solar sail is face-on to the Sun at <span class="highlight">${fmt(d,2)} AU</span> and has albedo <span class="highlight">${fmt(albedo,2)}</span>. It emits thermal radiation from <span class="highlight">${emitFaces === 2 ? 'both faces' : 'one face only'}</span>. Ignore any atmosphere and find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['flat geometry', `${fmt(d,2)} AU`, `${emitFaces} emitting face${emitFaces>1?'s':''}`, ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            <p>For a face-on flat object, absorbed flux is based on one face. Emission is from ${emitFaces === 2 ? 'both faces' : 'one face'}.</p>
+            <div class="formula-box">\\( S_0(1-a)A_{abs}/d^2 = \\sigma T^4 A_{emit} \\)</div>
+            <div class="formula-box">\\( S_0(1-a)/d^2 = ${emitFaces}\\sigma T^4 \\)</div>
+            <div class="formula-box">\\( T = \\left(\\dfrac{1361\\times(1-${fmt(albedo,2)})}{${emitFaces}\\times 5.67\\times10^{-8}\\times (${fmt(d,2)})^2}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      if (variant === 'panelTilt') {
+        const emitFaces = 2;
+        const theta = randInt(15, 70);
+        const cosTerm = Math.cos(theta * Math.PI / 180);
+        const exactK = Math.pow((SOLAR * (1 - albedo) * cosTerm) / (emitFaces * SIGMA * d * d), 0.25);
+        const omitTilt = Math.pow((SOLAR * (1 - albedo)) / (emitFaces * SIGMA * d * d), 0.25);
+        const sphereMistake = sphereTempK(d, albedo);
+        const alts = [
+          { code: 'tilt_omitted', value: toRequestedUnit(omitTilt, ask.requestedUnit) },
+          { code: 'geometry_sphere', value: toRequestedUnit(sphereMistake, ask.requestedUnit) },
+          { code: 'albedo_omitted', value: toRequestedUnit(Math.pow((SOLAR * cosTerm) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 6',
+          stem: `A flat panel in space is at <span class="highlight">${fmt(d,2)} AU</span>, tilted so that its normal makes an angle of <span class="highlight">${theta}°</span> to the Sun’s rays. Its albedo is <span class="highlight">${fmt(albedo,2)}</span>, and it radiates from both sides. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['tilt', `${theta}°`, `${fmt(d,2)} AU`, ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            <p>Tilt reduces absorbed sunlight by a factor of \\(\\cos\\theta\\).</p>
+            <div class="formula-box">\\( S_0(1-a)\\cos\\theta / d^2 = 2\\sigma T^4 \\)</div>
+            <div class="formula-box">\\( T = \\left(\\dfrac{1361\\times(1-${fmt(albedo,2)})\\times\\cos ${theta}^\\circ}{2\\times 5.67\\times10^{-8}\\times (${fmt(d,2)})^2}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      const emitFaces = choose([1, 2]);
+      const exactK = Math.pow((SOLAR * (1 - albedo)) / (emitFaces * SIGMA * d * d), 0.25);
+      const wrongFaces = Math.pow((SOLAR * (1 - albedo)) / ((emitFaces === 1 ? 2 : 1) * SIGMA * d * d), 0.25);
+      const sphereMistake = sphereTempK(d, albedo);
+      const alts = [
+        { code: 'flat_faces_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(sphereMistake, ask.requestedUnit) },
+        { code: 'albedo_omitted', value: toRequestedUnit(Math.pow(SOLAR / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) }
+      ];
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 6',
+        stem: `On an airless world at <span class="highlight">${fmt(d,2)} AU</span>, a flat plate lies horizontal at local noon so the Sun is overhead. Its albedo is <span class="highlight">${fmt(albedo,2)}</span>, and it radiates from <span class="highlight">${emitFaces === 2 ? 'both faces' : 'its upper face only'}</span>. Ignore conduction and find the equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['plate at noon', `${fmt(d,2)} AU`, `${emitFaces} emitting face${emitFaces>1?'s':''}`, ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          <p>With the Sun overhead, the plate intercepts the full local solar flux on its top face.</p>
+          <div class="formula-box">\\( S_0(1-a)A_{abs}/d^2 = \\sigma T^4 A_{emit} \\)</div>
+          <div class="formula-box">\\( S_0(1-a)/d^2 = ${emitFaces}\\sigma T^4 \\)</div>
+          <div class="formula-box">\\( T = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel7() {
+      const ask = randomAskedUnit(true);
+      const variant = choose(['sphere', 'cube', 'panel']);
+      if (variant === 'sphere') {
+        const r = roundTo(rand(0.08, 0.9), 2);
+        const power = randInt(20, 900);
+        const area = areaSphere(r);
+        const exactK = Math.pow(power / (SIGMA * area), 0.25);
+        const wrongArea = Math.pow(power / (SIGMA * Math.PI * r * r), 0.25);
+        const alts = [
+          { code: 'internal_area_wrong', value: toRequestedUnit(wrongArea, ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 7',
+          stem: `A spherical deep-space probe of radius <span class="highlight">${fmt(r,2)} m</span> generates <span class="highlight">${power} W</span> of internal power. Ignore sunlight and assume it radiates uniformly from the whole surface. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['deep space', `sphere r=${fmt(r,2)} m`, `${power} W`, ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            <p>In deep space, internal power balances thermal radiation:</p>
+            <div class="formula-box">\\( P_{internal} = P_{thermal} \\)</div>
+            <div class="formula-box">\\( P = \\sigma A T^4 \\)</div>
+            <p>For a sphere, \\( A = 4\\pi r^2 = ${fmt(area,4)}\,\\text{m}^2 \\).</p>
+            <div class="formula-box">\\( T = \\left(\\dfrac{${power}}{5.67\\times10^{-8}\\times ${fmt(area,4)}}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      if (variant === 'cube') {
+        const side = roundTo(rand(0.06, 0.45), 2);
+        const power = randInt(10, 450);
+        const area = areaCube(side);
+        const exactK = Math.pow(power / (SIGMA * area), 0.25);
+        const wrongArea = Math.pow(power / (SIGMA * side * side), 0.25);
+        const alts = [
+          { code: 'internal_area_wrong', value: toRequestedUnit(wrongArea, ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 7',
+          stem: `A cube-shaped instrument in deep space has side length <span class="highlight">${fmt(side,2)} m</span> and internal power <span class="highlight">${power} W</span>. Assume all six faces radiate. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['deep space', `cube ${fmt(side,2)} m`, `${power} W`, ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            <p>For a cube radiating from all faces:</p>
+            <div class="formula-box">\\( A = 6L^2 = 6\\times (${fmt(side,2)})^2 = ${fmt(area,4)}\,\\text{m}^2 \\)</div>
+            <div class="formula-box">\\( T = \\left(\\dfrac{${power}}{5.67\\times10^{-8}\\times ${fmt(area,4)}}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      const areaOneSide = roundTo(rand(0.05, 1.1), 2);
+      const emitFaces = choose([1, 2]);
+      const power = randInt(15, 700);
+      const area = areaOneSide * emitFaces;
+      const exactK = Math.pow(power / (SIGMA * area), 0.25);
+      const wrongFaces = Math.pow(power / (SIGMA * areaOneSide * (emitFaces === 1 ? 2 : 1)), 0.25);
+      const alts = [
+        { code: 'internal_area_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) },
+        { code: 'flat_faces_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) }
+      ];
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 7',
+        stem: `A radiator panel in deep space has area <span class="highlight">${fmt(areaOneSide,2)} m² per face</span> and must dump <span class="highlight">${power} W</span> of internal power. It radiates from <span class="highlight">${emitFaces === 2 ? 'both faces' : 'one face only'}</span>. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['deep space', `panel`, `${emitFaces} emitting face${emitFaces>1?'s':''}`, ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          <p>Internal power equals thermal radiation from the emitting area:</p>
+          <div class="formula-box">\\( P = \\sigma A_{emit} T^4 \\)</div>
+          <p>Here, \\( A_{emit} = ${emitFaces} \\times ${fmt(areaOneSide,2)} = ${fmt(area,2)}\,\\text{m}^2 \\).</p>
+          <div class="formula-box">\\( T = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel8() {
+      const ask = randomAskedUnit(true);
+      const variant = choose(['sphere', 'cube', 'panel']);
+      const roomC = randInt(16, 28);
+      const roomK = roomC + 273.15;
+      if (variant === 'sphere') {
+        const r = roundTo(rand(0.05, 0.18), 2);
+        const power = randInt(6, 80);
+        const area = areaSphere(r);
+        const exactK = Math.pow(roomK ** 4 + power / (SIGMA * area), 0.25);
+        const ignoreRoom = Math.pow(power / (SIGMA * area), 0.25);
+        const roomCWrong = Math.pow((roomC ** 4) + power / (SIGMA * area), 0.25);
+        const alts = [
+          { code: 'ambient_omitted', value: toRequestedUnit(ignoreRoom, ask.requestedUnit) },
+          { code: 'ambient_kelvin_error', value: toRequestedUnit(roomCWrong, ask.requestedUnit) },
+          { code: 'internal_area_wrong', value: toRequestedUnit(Math.pow(roomK ** 4 + power / (SIGMA * Math.PI * r * r), 0.25), ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 8',
+          stem: `A small spherical device of radius <span class="highlight">${fmt(r,2)} m</span> dissipates <span class="highlight">${power} W</span> in a room at <span class="highlight">${roomC}°C</span>. Assume radiative equilibrium only and that the whole sphere radiates. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['room', `${roomC}°C`, `${power} W`, ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            <p>In a room, the device both emits and absorbs thermal radiation. The balance can be written as</p>
+            <div class="formula-box">\\( P = \\sigma A (T^4 - T_{room}^4) \\)</div>
+            <p>So</p>
+            <div class="formula-box">\\( T = \\left(T_{room}^4 + \\dfrac{P}{\\sigma A}\\right)^{1/4} \\)</div>
+            <p>Convert the room temperature first: \\( T_{room} = ${roomC} + 273.15 = ${fmt(roomK,2)}\,\\text{K} \\).</p>
+            <p>Area of the sphere: \\( A = 4\\pi r^2 = ${fmt(area,4)}\,\\text{m}^2 \\).</p>
+            <div class="formula-box">\\( T = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      if (variant === 'cube') {
+        const side = roundTo(rand(0.05, 0.14), 2);
+        const power = randInt(4, 40);
+        const area = areaCube(side);
+        const exactK = Math.pow(roomK ** 4 + power / (SIGMA * area), 0.25);
+        const ignoreRoom = Math.pow(power / (SIGMA * area), 0.25);
+        const roomCWrong = Math.pow((roomC ** 4) + power / (SIGMA * area), 0.25);
+        const alts = [
+          { code: 'ambient_omitted', value: toRequestedUnit(ignoreRoom, ask.requestedUnit) },
+          { code: 'ambient_kelvin_error', value: toRequestedUnit(roomCWrong, ask.requestedUnit) },
+          { code: 'internal_area_wrong', value: toRequestedUnit(Math.pow(roomK ** 4 + power / (SIGMA * side * side), 0.25), ask.requestedUnit) }
+        ];
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 8',
+          stem: `A cube-shaped gadget of side length <span class="highlight">${fmt(side,2)} m</span> dissipates <span class="highlight">${power} W</span> in a room at <span class="highlight">${roomC}°C</span>. Assume all six faces radiate and ignore convection. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['room', `${roomC}°C`, `${power} W`, ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            <p>Use</p>
+            <div class="formula-box">\\( P = \\sigma A (T^4 - T_{room}^4) \\)</div>
+            <p>with \\( A = 6L^2 = ${fmt(area,4)}\,\\text{m}^2 \\) and \\( T_{room} = ${fmt(roomK,2)}\,\\text{K} \\).</p>
+            <div class="formula-box">\\( T = \\left(${fmt(roomK,2)}^4 + \\dfrac{${power}}{5.67\\times10^{-8}\\times ${fmt(area,4)}}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      const areaPerFace = roundTo(rand(0.03, 0.22), 2);
+      const emitFaces = choose([1, 2]);
+      const area = areaPerFace * emitFaces;
+      const power = randInt(5, 55);
+      const exactK = Math.pow(roomK ** 4 + power / (SIGMA * area), 0.25);
+      const ignoreRoom = Math.pow(power / (SIGMA * area), 0.25);
+      const roomCWrong = Math.pow((roomC ** 4) + power / (SIGMA * area), 0.25);
+      const wrongFaces = Math.pow(roomK ** 4 + power / (SIGMA * areaPerFace * (emitFaces === 1 ? 2 : 1)), 0.25);
+      const alts = [
+        { code: 'ambient_omitted', value: toRequestedUnit(ignoreRoom, ask.requestedUnit) },
+        { code: 'ambient_kelvin_error', value: toRequestedUnit(roomCWrong, ask.requestedUnit) },
+        { code: 'flat_faces_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) }
+      ];
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 8',
+        stem: `A warm panel in a room at <span class="highlight">${roomC}°C</span> dissipates <span class="highlight">${power} W</span>. Each face has area <span class="highlight">${fmt(areaPerFace,2)} m²</span>, and it radiates from <span class="highlight">${emitFaces === 2 ? 'both faces' : 'one face only'}</span>. Ignore convection and find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['room', `${roomC}°C`, `${emitFaces} emitting face${emitFaces>1?'s':''}`, ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          <p>Use the room-temperature form of the radiative balance:</p>
+          <div class="formula-box">\\( P_{internal} = \\sigma A_{emit}(T^4 - T_{room}^4) \\)</div>
+          <div class="formula-box">\\( T = \\left(T_{room}^4 + \\dfrac{P}{\\sigma A_{emit}}\\right)^{1/4} \\)</div>
+          <p>Here, \\( T_{room} = ${fmt(roomK,2)}\,\\text{K} \\) and \\( A_{emit} = ${fmt(area,2)}\,\\text{m}^2 \\).</p>
+          <div class="formula-box">\\( T = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+
+    function generateLevel3Merged() {
+      return Math.random() < 0.5 ? generateLevel3() : generateLevel5();
+    }
+
+    function generateLevel4Star() {
+      const ask = randomAskedUnit();
+      const luminositySolar = roundTo(rand(0.25, 8.5), 2);
+      const d = roundTo(rand(0.45, 9.5), 2);
+      const withAlbedo = Math.random() < 0.5;
+      const withEmissivity = Math.random() < 0.45;
+      const albedo = withAlbedo ? roundTo(rand(0.05, 0.72), 2) : 0;
+      const emissivity = withEmissivity ? roundTo(rand(0.45, 0.96), 2) : 1;
+      const intensity = intensityFromStar(luminositySolar, d);
+      const exactK = Math.pow((intensity * (1 - albedo)) / (4 * emissivity * SIGMA), 0.25);
+      const noDsq = Math.pow((SOLAR * luminositySolar * (1 - albedo)) / (4 * emissivity * SIGMA * d), 0.25);
+      const assumeEarth = Math.pow((SOLAR * luminositySolar * (1 - albedo)) / (4 * emissivity * SIGMA), 0.25);
+      const noGeom = Math.pow((SOLAR * luminositySolar * (1 - albedo)) / (emissivity * SIGMA * d * d), 0.25);
+      const alts = [
+        { code: 'distance_wrong_power', value: toRequestedUnit(noDsq, ask.requestedUnit) },
+        { code: 'earth_distance_assumed', value: toRequestedUnit(assumeEarth, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(noGeom, ask.requestedUnit) }
+      ];
+      if (withAlbedo) {
+        alts.push({ code: 'albedo_omitted', value: toRequestedUnit(Math.pow((SOLAR * luminositySolar) / (4 * emissivity * SIGMA * d * d), 0.25), ask.requestedUnit) });
+      }
+      if (withEmissivity) {
+        alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(Math.pow((intensity * (1 - albedo)) / (4 * SIGMA), 0.25), ask.requestedUnit) });
+        alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((intensity * (1 - albedo) * emissivity) / (4 * SIGMA), 0.25), ask.requestedUnit) });
+      }
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 4',
+        stem: `A spherical planet orbits a star of luminosity <span class="highlight">${fmt(luminositySolar,2)} L☉</span> at a distance of <span class="highlight">${fmt(d,2)} AU</span>${withAlbedo ? ` and has albedo <span class="highlight">${fmt(albedo,2)}</span>` : ''}${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['star luminosity', `${fmt(luminositySolar,2)} L☉`, `${fmt(d,2)} AU`, withAlbedo ? `albedo ${fmt(albedo,2)}` : 'no albedo', withEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>First find the intensity at the orbit:</p>
+          <div class="formula-box">\\( I = S_0 \\dfrac{L/L_\\odot}{d^2} = 1361\\times\\dfrac{${fmt(luminositySolar,2)}}{(${fmt(d,2)})^2} = ${fmt(intensity, 2)}\,\\text{W m}^{-2} \\)</div>
+          <p>Then use the spherical equilibrium model:</p>
+          <div class="formula-box">\\( I(1-a)\\pi r^2 = 4\\pi r^2 ${withEmissivity ? `\\varepsilon ` : ''}\\sigma T^4 \\)</div>
+          <div class="formula-box">\\( T = \\left(\\dfrac{I(1-a)}{4${withEmissivity ? `\\times ${fmt(emissivity,2)}` : ''}\\sigma}\\right)^{1/4} = ${fmt(exactK, 2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel5GeometryNoTilt() {
+      const ask = randomAskedUnit();
+      const variant = choose(['sail', 'surfacePlate']);
+      const d = roundTo(rand(0.6, 4.5), 2);
+      const albedo = roundTo(rand(0.04, 0.55), 2);
+      const withEmissivity = Math.random() < 0.45;
+      const emissivity = withEmissivity ? roundTo(rand(0.45, 0.96), 2) : 1;
+
+      if (variant === 'sail') {
+        const emitFaces = choose([1, 2]);
+        const exactK = Math.pow((SOLAR * (1 - albedo)) / (emitFaces * emissivity * SIGMA * d * d), 0.25);
+        const sphereMistake = sphereTempK(d, albedo, emissivity);
+        const wrongFaces = Math.pow((SOLAR * (1 - albedo)) / ((emitFaces === 1 ? 2 : 1) * emissivity * SIGMA * d * d), 0.25);
+        const alts = [
+          { code: 'geometry_sphere', value: toRequestedUnit(sphereMistake, ask.requestedUnit) },
+          { code: 'flat_faces_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) },
+          { code: 'albedo_omitted', value: toRequestedUnit(Math.pow(SOLAR / (emitFaces * emissivity * SIGMA * d * d), 0.25), ask.requestedUnit) }
+        ];
+        if (withEmissivity) {
+          alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo)) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) });
+          alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo) * emissivity) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) });
+        }
+        addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+        return buildQuestion({
+          promptTag: 'Level 5',
+          stem: `A thin flat solar sail is face-on to the Sun at <span class="highlight">${fmt(d,2)} AU</span> and has albedo <span class="highlight">${fmt(albedo,2)}</span>${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}. It emits thermal radiation from <span class="highlight">${emitFaces === 2 ? 'both faces' : 'one face only'}</span>. Ignore any atmosphere and find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+          exactK,
+          requestedUnit: ask.requestedUnit,
+          decimals: ask.decimals,
+          meta: ['flat geometry', `${fmt(d,2)} AU`, `${emitFaces} emitting face${emitFaces>1?'s':''}`, withEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+          altAnswers: alts,
+          worked: String.raw`
+            ${workedIntroHtml()}
+            <p>For a face-on flat object, absorbed flux is based on one face. Emission is from ${emitFaces === 2 ? 'both faces' : 'one face'}.</p>
+            <div class="formula-box">\\( S_0(1-a)/d^2 = ${emitFaces}${withEmissivity ? `\\varepsilon ` : ''}\\sigma T^4 \\)</div>
+            <div class="formula-box">\\( T = \\left(\\dfrac{1361\\times(1-${fmt(albedo,2)})}{${emitFaces}${withEmissivity ? `\\times ${fmt(emissivity,2)}` : ''}\\times 5.67\\times10^{-8}\\times (${fmt(d,2)})^2}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+            <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+          `
+        });
+      }
+
+      const emitFaces = choose([1, 2]);
+      const exactK = Math.pow((SOLAR * (1 - albedo)) / (emitFaces * emissivity * SIGMA * d * d), 0.25);
+      const wrongFaces = Math.pow((SOLAR * (1 - albedo)) / ((emitFaces === 1 ? 2 : 1) * emissivity * SIGMA * d * d), 0.25);
+      const sphereMistake = sphereTempK(d, albedo, emissivity);
+      const alts = [
+        { code: 'flat_faces_wrong', value: toRequestedUnit(wrongFaces, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(sphereMistake, ask.requestedUnit) },
+        { code: 'albedo_omitted', value: toRequestedUnit(Math.pow(SOLAR / (emitFaces * emissivity * SIGMA * d * d), 0.25), ask.requestedUnit) }
+      ];
+      if (withEmissivity) {
+        alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo)) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) });
+        alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo) * emissivity) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) });
+      }
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 5',
+        stem: `On an airless world at <span class="highlight">${fmt(d,2)} AU</span>, a flat plate lies horizontal at local noon so the Sun is overhead. Its albedo is <span class="highlight">${fmt(albedo,2)}</span>${withEmissivity ? ` and emissivity <span class="highlight">${fmt(emissivity,2)}</span>` : ''}, and it radiates from <span class="highlight">${emitFaces === 2 ? 'both faces' : 'its upper face only'}</span>. Ignore conduction and find the equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['plate at noon', `${fmt(d,2)} AU`, `${emitFaces} emitting face${emitFaces>1?'s':''}`, withEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>With the Sun overhead, the plate intercepts the full local solar flux on its top face.</p>
+          <div class="formula-box">\\( S_0(1-a)/d^2 = ${emitFaces}${withEmissivity ? `\\varepsilon ` : ''}\\sigma T^4 \\)</div>
+          <div class="formula-box">\\( T = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function generateLevel8Tilt() {
+      const ask = randomAskedUnit();
+      const d = roundTo(rand(0.6, 4.5), 2);
+      const albedo = roundTo(rand(0.04, 0.55), 2);
+      const emitFaces = 2;
+      const theta = randInt(15, 70);
+      const withEmissivity = Math.random() < 0.45;
+      const emissivity = withEmissivity ? roundTo(rand(0.45, 0.96), 2) : 1;
+      const cosTerm = Math.cos(theta * Math.PI / 180);
+      const exactK = Math.pow((SOLAR * (1 - albedo) * cosTerm) / (emitFaces * emissivity * SIGMA * d * d), 0.25);
+      const omitTilt = Math.pow((SOLAR * (1 - albedo)) / (emitFaces * emissivity * SIGMA * d * d), 0.25);
+      const sphereMistake = sphereTempK(d, albedo, emissivity);
+      const alts = [
+        { code: 'tilt_omitted', value: toRequestedUnit(omitTilt, ask.requestedUnit) },
+        { code: 'geometry_sphere', value: toRequestedUnit(sphereMistake, ask.requestedUnit) },
+        { code: 'albedo_omitted', value: toRequestedUnit(Math.pow((SOLAR * cosTerm) / (emitFaces * emissivity * SIGMA * d * d), 0.25), ask.requestedUnit) }
+      ];
+      if (withEmissivity) {
+        alts.push({ code: 'emissivity_omitted', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo) * cosTerm) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) });
+        alts.push({ code: 'emissivity_wrong_way', value: toRequestedUnit(Math.pow((SOLAR * (1 - albedo) * cosTerm * emissivity) / (emitFaces * SIGMA * d * d), 0.25), ask.requestedUnit) });
+      }
+      addUnitAltAnswers(exactK, ask.requestedUnit, alts);
+      return buildQuestion({
+        promptTag: 'Level 8',
+        stem: `A flat panel in space is at <span class="highlight">${fmt(d,2)} AU</span>, tilted so that its normal makes an angle of <span class="highlight">${theta}°</span> to the Sun’s rays. Its albedo is <span class="highlight">${fmt(albedo,2)}</span>${withEmissivity ? `, its emissivity is <span class="highlight">${fmt(emissivity,2)}</span>` : ''}, and it radiates from both sides. Find its equilibrium temperature to <span class="highlight">${ask.label}</span>.`,
+        exactK,
+        requestedUnit: ask.requestedUnit,
+        decimals: ask.decimals,
+        meta: ['tilt', `${theta}°`, `${fmt(d,2)} AU`, withEmissivity ? `ε ${fmt(emissivity,2)}` : 'ε = 1', ask.label],
+        altAnswers: alts,
+        worked: String.raw`
+          ${workedIntroHtml()}
+          <p>Tilt reduces absorbed sunlight by a factor of \\( \\cos\\theta \\).</p>
+          <div class="formula-box">\\( S_0(1-a)A_{abs}\\cos\\theta / d^2 = ${withEmissivity ? `\\varepsilon ` : ''}\\sigma T^4 A_{emit} \\)</div>
+          <div class="formula-box">\\( S_0(1-a)\\cos\\theta / d^2 = 2${withEmissivity ? `\\varepsilon ` : ''}\\sigma T^4 \\)</div>
+          <div class="formula-box">\\( T = \\left(\\dfrac{1361\\times(1-${fmt(albedo,2)})\\times\\cos ${theta}^\\circ}{2${withEmissivity ? `\\times ${fmt(emissivity,2)}` : ''}\\times 5.67\\times10^{-8}\\times (${fmt(d,2)})^2}\\right)^{1/4} = ${fmt(exactK,2)}\,\\text{K} \\)</div>
+          <p>Final answer = <strong>${fmt(toRequestedUnit(exactK, ask.requestedUnit), ask.decimals)} ${labelForUnit(ask.requestedUnit)}</strong>.</p>
+        `
+      });
+    }
+
+    function primaryErrorCode(codes, fallback = 'generic') {
+      const priority = ['geometry_sphere', 'flat_faces_wrong', 'tilt_omitted', 'albedo_omitted', 'albedo_used_instead', 'invented_albedo', 'distance_wrong_power', 'earth_distance_assumed', 'back_radiation_omitted', 'divided_by_4_again', 'internal_area_wrong', 'ambient_omitted', 'ambient_kelvin_error', 'unit_not_converted_to_c', 'unit_not_converted_to_k', 'rounding', 'generic'];
+      for (const code of priority) {
+        if (codes.includes(code)) return code;
+      }
+      return codes[0] || fallback;
+    }
+
+    function altTolerance(question, value) {
+      return Math.max(question.tolerance, Math.abs(value) * 0.015);
+    }
+
+    function pushUniqueCode(codes, code) {
+      if (code && !codes.includes(code)) codes.push(code);
+    }
+
+    function detectError(question, userValue) {
+      if (compareValue(userValue, question.displayAnswer, question.tolerance)) {
+        return { correct: true, code: null, codes: [] };
+      }
+
+      let bestMatch = null;
+      const matchedCodes = [];
+
+      for (const alt of question.altAnswers || []) {
+        const directTolerance = altTolerance(question, alt.value);
+        if (compareValue(userValue, alt.value, directTolerance)) {
+          const diff = Math.abs(userValue - alt.value);
+          pushUniqueCode(matchedCodes, alt.code);
+          if (!bestMatch || diff < bestMatch.diff) bestMatch = { code: alt.code, diff };
+        }
+
+        const shiftedValue = question.requestedUnit === 'K' ? alt.value - 273.15 : alt.value + 273.15;
+        const shiftedTolerance = altTolerance(question, shiftedValue);
+        if (compareValue(userValue, shiftedValue, shiftedTolerance)) {
+          const diff = Math.abs(userValue - shiftedValue);
+          pushUniqueCode(matchedCodes, alt.code);
+          pushUniqueCode(matchedCodes, question.requestedUnit === 'K' ? 'unit_not_converted_to_k' : 'unit_not_converted_to_c');
+          if (!bestMatch || diff < bestMatch.diff) bestMatch = { code: alt.code, diff };
+        }
+      }
+
+      if (matchedCodes.length) {
+        const code = primaryErrorCode(matchedCodes, bestMatch?.code || 'generic');
+        return { correct: false, code, codes: matchedCodes };
+      }
+
+      if (Math.abs(userValue - question.displayAnswer) <= Math.max(question.tolerance * 2.6, Math.abs(question.displayAnswer) * 0.03)) {
+        return { correct: false, code: 'rounding', codes: ['rounding'] };
+      }
+
+      return { correct: false, code: 'generic', codes: ['generic'] };
+    }
+
+    function pushRecentEvent(levelStats, eventType) {
+      levelStats.recent.push(eventType);
+      levelStats.recent = levelStats.recent.slice(-10);
+    }
+
+    function recordNonScoringEvent(eventType) {
+      const levelStats = state.levels[state.currentLevel - 1];
+      pushRecentEvent(levelStats, eventType);
+      saveState();
+    }
+
+    function recordAttempt(correct, errorCodes) {
+      const levelStats = state.levels[state.currentLevel - 1];
+      levelStats.attempts += 1;
+      if (correct) levelStats.correct += 1;
+      pushRecentEvent(levelStats, correct ? 'ok' : 'bad');
+      if (!correct) {
+        const codes = Array.from(new Set((Array.isArray(errorCodes) ? errorCodes : [errorCodes]).filter(Boolean)));
+        (codes.length ? codes : ['generic']).forEach(code => {
+          state.errors[code] = (state.errors[code] || 0) + 1;
+        });
+      }
+      saveState();
+    }
+
+    function maybeRecordSkippedCurrent() {
+      if (!currentQuestion || hasSubmittedCurrent || hasRecordedNonScoringCurrent) return;
+      recordNonScoringEvent('skipped');
+      hasRecordedNonScoringCurrent = true;
+    }
+
+    function showWorkedSolution() {
+      if (!currentQuestion) return;
+      if (!hasSubmittedCurrent && !hasRecordedNonScoringCurrent) {
+        recordNonScoringEvent('shown');
+        hasRecordedNonScoringCurrent = true;
+        renderSidebar();
+      }
+      dom.solutionDetails.classList.remove('hidden');
+      dom.solutionDetails.open = true;
+    }
+
+    function errorInfo(code) {
+      return ERROR_CATALOG.find(item => item.code === code) || ERROR_CATALOG.find(item => item.code === 'generic');
+    }
+
+    function buildFeedback(result, userValue) {
+      if (result.correct) {
+        return {
+          className: 'ok',
+          html: `
+            <div class="feedback-head"><span class="feedback-badge success">✓ Correct</span></div>
+            The target answer is <strong>${fmt(currentQuestion.displayAnswer, currentQuestion.decimals)} ${labelForUnit(currentQuestion.requestedUnit)}</strong>.<br>
+            <span class="muted">That setup matches the model used in this question.</span>
+          `
+        };
+      }
+      const info = errorInfo(result.code);
+      const alsoCheck = (result.codes || []).filter(code => code !== result.code && code !== 'generic');
+      const isClose = (result.codes || []).includes('rounding') || Math.abs(userValue - currentQuestion.displayAnswer) <= Math.max(currentQuestion.tolerance * 2.6, Math.abs(currentQuestion.displayAnswer) * 0.03);
+      return {
+        className: 'bad',
+        html: `
+          <div class="feedback-head"><span class="feedback-badge retry">Check the setup</span></div>
+          ${isClose ? '<span class="muted">This looks close, so your setup may be partly right.</span><br>' : ''}
+          Your answer was <strong>${fmt(userValue, 3)}</strong>. The most likely issue is <strong>${info.label.toLowerCase()}</strong>.<br>
+          <span class="muted">${info.help}</span>
+          ${alsoCheck.length ? `<br><span class="muted">Also worth checking: ${alsoCheck.slice(0, 3).map(code => errorInfo(code).label.toLowerCase()).join(', ')}.</span>` : ''}<br>
+          The correct answer is <strong>${fmt(currentQuestion.displayAnswer, currentQuestion.decimals)} ${labelForUnit(currentQuestion.requestedUnit)}</strong>.<br>
+          <span class="muted">Compare your setup with the worked solution, then choose whether to try another one or move on.</span>
+        `
+      };
+    }
+
+    function renderSidebar() {
+      const overall = state.levels.reduce((acc, level) => {
+        acc.attempts += level.attempts;
+        acc.correct += level.correct;
+        return acc;
+      }, { attempts: 0, correct: 0 });
+      dom.overallScore.textContent = `${overall.correct}/${overall.attempts}`;
+      dom.overallPercent.textContent = `${percent(overall.correct, overall.attempts)}%`;
+      dom.currentLevelMini.textContent = currentLevelDef().mini || state.currentLevel;
+      dom.currentLevelNameMini.textContent = currentLevelDef().short;
+
+      let streak = 0;
+      const recent = state.levels[state.currentLevel - 1].recent.slice().reverse();
+      for (const item of recent) {
+        if (item === 'ok') streak += 1; else break;
+      }
+      dom.recentStreak.textContent = streak;
+
+      dom.levelList.innerHTML = '';
+      LEVELS.forEach((level, idx) => {
+        const stats = state.levels[idx];
+        const recentDots = stats.recent.map(item => {
+          const symbol = item === 'ok' ? '✓' : item === 'bad' ? '✕' : item === 'shown' ? 'W' : 'S';
+          const title = item === 'ok' ? 'Correct' : item === 'bad' ? 'Incorrect' : item === 'shown' ? 'Showed worked solution' : 'Skipped';
+          return `<span class="recent-dot ${item}" title="${title}">${symbol}</span>`;
+        }).join('');
+        const card = document.createElement('div');
+        card.className = `level-card ${state.currentLevel === level.id ? 'active' : ''}`;
+        card.innerHTML = `
+          <div class="level-top">
+            <div class="level-name">Level ${level.id}: ${level.short}</div>
+            <div class="level-score">${stats.correct}/${stats.attempts} ${stats.attempts ? `${percent(stats.correct, stats.attempts)}%` : '0%'}</div>
+          </div>
+          <div class="recent-row">${recentDots}</div>
+          <div class="tiny">${level.subtitle}</div>
+        `;
+        card.addEventListener('click', () => { maybeRecordSkippedCurrent(); setLevel(level.id); });
+        dom.levelList.appendChild(card);
+      });
+
+      const sortedErrors = ERROR_CATALOG
+        .filter(item => item.code !== 'generic')
+        .sort((a, b) => (state.errors[b.code] || 0) - (state.errors[a.code] || 0) || a.label.localeCompare(b.label));
+
+      dom.errorGrid.innerHTML = sortedErrors.map(item => {
+        const count = state.errors[item.code] || 0;
+        return `
+          <div class="error-row ${count ? 'active' : ''}">
+            <span class="error-tag">${count}</span>
+            <span>${item.label}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderHeader() {
+      const level = currentLevelDef();
+      dom.levelBadge.textContent = level.badge || `Level ${level.id}`;
+      dom.levelTitle.textContent = level.title;
+      dom.levelSubtitle.textContent = level.subtitle;
+      dom.prevBtn.disabled = state.currentLevel === 1;
+      dom.nextBtn.disabled = state.currentLevel === LEVELS.length;
+    }
+
+    function renderSplash() {
+      const level = currentLevelDef();
+      dom.splashCard.classList.remove('hidden');
+      dom.questionCard.classList.add('hidden');
+      dom.splashCard.innerHTML = `
+        <div class="badge">Start of level ${level.id}</div>
+        <h3>${level.title}</h3>
+        ${splashWelcomeHtml(level)}
+        ${levelDiagram(level.id)}
+        <div class="splash-list">
+          ${level.splash.map(text => `<p>${text}</p>`).join('')}
+        </div>
+        ${basicMathForLevel(level.id)}
+        <div class="section-card">
+          <h4>What changes here</h4>
+          <p class="small">${level.extra}</p>
+          <p class="tiny">Move on whenever you feel ready.</p>
+        </div>
+        <div class="controls">
+          <button class="primary" id="startLevelBtn">Start this level</button>
+          <button class="secondary" id="skipQuestionBtn">Give me a question now</button>
+          ${state.currentLevel < LEVELS.length ? '<button class="ghost" id="jumpNextFromSplash">Move straight to the next level</button>' : ''}
+        </div>
+      `;
+      document.getElementById('startLevelBtn').addEventListener('click', () => startLevelQuestion());
+      document.getElementById('skipQuestionBtn').addEventListener('click', () => startLevelQuestion());
+      const jumpBtn = document.getElementById('jumpNextFromSplash');
+      if (jumpBtn) jumpBtn.addEventListener('click', () => setLevel(state.currentLevel + 1));
+      typesetMath(dom.splashCard);
+    }
+
+    function renderQuestion() {
+      dom.splashCard.classList.add('hidden');
+      dom.questionCard.classList.remove('hidden');
+      dom.questionMeta.innerHTML = (currentQuestion.meta || []).map(item => `<span class="pill">${item}</span>`).join('');
+      dom.questionStem.innerHTML = currentQuestion.stem;
+      dom.questionHintBox.innerHTML = buildHintHtml(currentQuestion);
+      dom.answerInput.value = '';
+      dom.answerInput.placeholder = `Answer in ${labelForUnit(currentQuestion.requestedUnit)}`;
+      dom.feedbackBox.className = 'feedback hidden';
+      dom.feedbackBox.innerHTML = '';
+      dom.solutionDetails.classList.add('hidden');
+      dom.solutionDetails.open = false;
+      dom.solutionBody.innerHTML = `<div class="worked-stack">${workedIntroHtml()}${currentQuestion.worked}</div>`;
+      hasSubmittedCurrent = false;
+      hasRecordedNonScoringCurrent = false;
+      typesetMath([dom.questionHintBox, dom.solutionBody]);
+      dom.answerInput.focus();
+    }
+
+    function startLevelQuestion() {
+      currentQuestion = currentLevelDef().generator();
+      renderQuestion();
+      renderSidebar();
+      renderHeader();
+    }
+
+    function setLevel(levelNumber) {
+      state.currentLevel = Math.max(1, Math.min(LEVELS.length, levelNumber));
+      saveState();
+      currentQuestion = null;
+      hasSubmittedCurrent = false;
+      hasRecordedNonScoringCurrent = false;
+      renderAll();
+    }
+
+    function renderAll() {
+      renderSidebar();
+      renderHeader();
+      renderSplash();
+    }
+
+    function submitAnswer() {
+      if (!currentQuestion) return;
+      const cleaned = dom.answerInput.value.trim().replace(/,/g, '.');
+      const userValue = parseFloat(cleaned);
+      if (!Number.isFinite(userValue)) {
+        dom.feedbackBox.className = 'feedback bad';
+        dom.feedbackBox.innerHTML = 'Please enter a numerical answer.';
+        dom.feedbackBox.classList.remove('hidden');
+        return;
+      }
+      const result = detectError(currentQuestion, userValue);
+      if (!hasSubmittedCurrent) {
+        recordAttempt(result.correct, result.codes || result.code);
+      }
+      hasSubmittedCurrent = true;
+      const feedback = buildFeedback(result, userValue);
+      dom.feedbackBox.className = `feedback ${feedback.className}`;
+      dom.feedbackBox.innerHTML = feedback.html;
+      dom.feedbackBox.classList.remove('hidden');
+      dom.solutionDetails.classList.remove('hidden');
+      dom.solutionDetails.open = true;
+      renderSidebar();
+    }
+
+    dom.submitBtn.addEventListener('click', submitAnswer);
+    dom.newQuestionBtn.addEventListener('click', () => {
+      maybeRecordSkippedCurrent();
+      startLevelQuestion();
+    });
+    dom.showSolutionBtn.addEventListener('click', showWorkedSolution);
+    dom.answerInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') submitAnswer();
+    });
+    dom.prevBtn.addEventListener('click', () => {
+      maybeRecordSkippedCurrent();
+      setLevel(state.currentLevel - 1);
+    });
+    dom.nextBtn.addEventListener('click', () => {
+      maybeRecordSkippedCurrent();
+      setLevel(state.currentLevel + 1);
+    });
+    dom.replayBtn.addEventListener('click', () => {
+      maybeRecordSkippedCurrent();
+      renderSplash();
+    });
+    dom.resetBtn.addEventListener('click', () => {
+      state = freshState();
+      saveState();
+      currentQuestion = null;
+      hasSubmittedCurrent = false;
+      hasRecordedNonScoringCurrent = false;
+      renderAll();
+    });
+
+    renderAll();
+  </script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']]
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+      }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+</body>
+</html>
